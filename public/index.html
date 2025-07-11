@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio DokaBurger</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --laranja: #FF6B00;
+            --marrom: #2E1A0F;
+            --branco: #FFFFFF;
+            --cinza: #F5F5F5;
+            --verde: #25D366;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
+        body { background-color: var(--cinza); color: var(--marrom); padding-bottom: 80px; }
+        
+        header {
+            background: var(--marrom);
+            color: var(--branco);
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #btn-meus-pedidos {
+            background: transparent;
+            border: 1px solid var(--laranja);
+            color: var(--branco);
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #btn-meus-pedidos:hover {
+            background-color: var(--laranja);
+            color: var(--marrom);
+        }
+
+        .logo { font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .logo span { color: var(--laranja); }
+        .logo i { margin-right: 10px; color: var(--laranja); }
+        
+        .menu-container { display: flex; align-items: center; background: var(--branco); position: sticky; top: 60px; z-index: 90; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .menu-categorias { flex-grow: 1; display: flex; overflow-x: auto; scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none; }
+        .menu-categorias::-webkit-scrollbar { display: none; }
+        .categoria-btn { padding: 12px 15px; margin: 8px 5px; background: var(--cinza); border: none; border-radius: 20px; font-weight: bold; white-space: nowrap; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .categoria-btn.ativo { background: var(--laranja); color: var(--branco); }
+        
+        .menu-scroll-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--laranja);
+            color: var(--branco);
+            min-width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin: 0 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            transition: opacity 0.3s;
+        }
+        .menu-scroll-btn:hover {
+            opacity: 0.8;
+        }
+
+        .produtos-container { padding: 15px; }
+        .produto-card { background: var(--branco); border-radius: 10px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); display: flex; }
+        .produto-imagem-container { width: 120px; height: 120px; min-width: 120px; }
+        .produto-imagem { width: 100%; height: 100%; object-fit: cover; }
+        .produto-conteudo { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
+        .produto-nome { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .produto-badge { background: var(--laranja); color: white; padding: 3px 8px; border-radius: 5px; font-size: 12px; margin-left: 10px; white-space: nowrap; }
+        .produto-descricao { font-size: 14px; color: #666; margin-bottom: 10px; flex-grow: 1; }
+        .produto-footer { display: flex; justify-content: space-between; align-items: center; }
+        .produto-preco-container { display: flex; flex-direction: column; align-items: flex-start; }
+        .produto-preco { font-size: 18px; font-weight: bold; color: var(--laranja); }
+        .produto-preco-antigo { font-size: 12px; color: #999; text-decoration: line-through; }
+        .add-btn { background: var(--laranja); color: var(--branco); border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
+        .carrinho-btn { position: fixed; bottom: 20px; right: 20px; background: var(--laranja); color: var(--branco); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 3px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 80; border: none; }
+        .carrinho-contador { position: absolute; top: -5px; right: -5px; background: var(--marrom); color: var(--branco); width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+        
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 999; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); animation: modalFadeIn 0.3s; display: flex; flex-direction: column; max-height: 80vh; position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 15px; }
+        
+        #carrinho-itens { overflow-y: auto; flex-grow: 1; padding-right: 10px; }
+        .carrinho-item { display: flex; flex-direction: column; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .carrinho-item-header { display: flex; align-items: center; width: 100%; }
+        .carrinho-item-info { flex-grow: 1; } .carrinho-item-info p { font-size: 14px; color: #666; }
+        .quantidade-controls { display: flex; align-items: center; margin: 0 10px; }
+        .quantidade-controls button { background: var(--cinza); border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; cursor: pointer; }
+        .quantidade-controls span { margin: 0 12px; font-size: 16px; }
+        .remover-item-btn { background: none; border: none; color: #ff4d4d; font-size: 18px; cursor: pointer; margin-left: 10px; }
+        .carrinho-item-obs { margin-top: 10px; }
+        .obs-input { width: 100%; padding: 8px; border: 1px solid #eee; border-radius: 5px; font-size: 14px; background-color: #fafafa; }
+        .obs-input::placeholder { color: #999; }
+        
+        .carrinho-footer { margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px; }
+        .carrinho-resumo { font-size: 16px; }
+        .carrinho-resumo div { display: flex; justify-content: space-between; margin-bottom: 8px; color: #555; }
+        .carrinho-resumo div span:first-child { color: #555; }
+        .carrinho-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 10px; }
+        .carrinho-actions button { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        #btn-finalizar-pedido { background: var(--laranja); color: var(--branco); }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+        .form-group input:read-only { background-color: var(--cinza); }
+        .form-actions { margin-top: 20px; display: flex; flex-direction: column; }
+        .btn-primary { background: var(--laranja); color: var(--branco); margin-bottom: 8px; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%;}
+        .btn-secondary { background: var(--cinza); color: var(--marrom); padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; width: 100%; }
+        
+        #dados-confirmacao p { margin-bottom: 10px; background-color: #fafafa; padding: 10px; border-radius: 5px; text-align: left; }
+        #dados-confirmacao p strong { color: var(--marrom); }
+
+        .metodo-pagamento { display: flex; align-items: center; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+        .metodo-pagamento:hover, .metodo-pagamento.ativo { border-color: var(--laranja); background-color: #FFF3E0; }
+        .metodo-pagamento i { font-size: 24px; margin-right: 15px; width: 30px; text-align: center; }
+        .troco-container { margin-top: 10px; display: none; }
+        .troco-calculado { background-color: #FFF9E6; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
+        
+        .confirmacao-content { text-align: center; overflow-y: auto; }
+        .confirmacao-content h2 { font-size: 28px; color: var(--marrom); margin-bottom: 15px; }
+        .confirmacao-content p { margin: 15px 0; font-size: 16px; color: #333; }
+        .codigo-entrega-container { margin: 20px 0; }
+        .codigo-entrega-label { font-size: 14px; text-transform: uppercase; color: #555; margin-bottom: 5px; }
+        .codigo-entrega { font-size: 32px; font-weight: bold; color: var(--laranja); padding: 15px; border: 2px dashed var(--laranja); border-radius: 8px; background-color: #FFF3E0; letter-spacing: 5px; display: inline-block; margin-top: 5px; }
+        .emoji-header { font-size: 60px; margin-bottom: 20px; line-height: 1; }
+        .info-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; }
+        .success-box { background-color: #FFF3E0; padding: 15px; border-radius: 10px; margin: 15px 0; }
+        
+        .modal-scroll-btn {
+            position: absolute;
+            right: 15px;
+            width: 45px;
+            height: 45px;
+            background-color: var(--laranja);
+            color: var(--branco);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        .modal-scroll-btn:hover {
+            opacity: 0.85;
+        }
+        #btn-scroll-up {
+            bottom: 75px;
+        }
+        #btn-scroll-down {
+            bottom: 20px;
+        }
+
+        @media screen and (max-width: 480px) {
+            .modal-content {
+                padding: 20px;
+            }
+            .confirmacao-content h2 {
+                font-size: 22px;
+            }
+            .emoji-header {
+                font-size: 50px;
+            }
+            .codigo-entrega {
+                font-size: 26px;
+                padding: 12px;
+                letter-spacing: 3px;
+            }
+            .confirmacao-content p {
+                font-size: 15px;
+            }
+        }
+        
+        .pedido-card {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .pedido-card-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .pedido-card-body ul {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+        .pedido-card-body ul li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-hamburger"></i>
+            Doka<span>Burger</span>
+        </div>
+        <button id="btn-meus-pedidos">
+            <i class="fas fa-history"></i> Meus Pedidos
+        </button>
+    </header>
+
+    <div class="menu-container">
+        <div id="menu-scroll-left" class="menu-scroll-btn">
+            <i class="fas fa-chevron-left"></i>
+        </div>
+        <div class="menu-categorias">
+             <button class="categoria-btn ativo" data-categoria="Burgers 180g">Burgers 180g</button>
+             <button class="categoria-btn" data-categoria="Burgers 120g">Burgers 120g</button>
+             <button class="categoria-btn" data-categoria="Frango">Frango</button>
+             <button class="categoria-btn" data-categoria="Combos">Combos</button>
+             <button class="categoria-btn" data-categoria="Bebidas">Bebidas</button>
+        </div>
+        <div id="menu-scroll-right" class="menu-scroll-btn">
+            <i class="fas fa-chevron-right"></i>
+        </div>
+    </div>
+    <div class="produtos-container"></div>
+    <button class="carrinho-btn">
+        <i class="fas fa-shopping-cart"></i>
+        <div class="carrinho-contador">0</div>
+    </button>
+    
+    <div id="modalCarrinho" class="modal">
+         <div class="modal-content">
+            <div class="modal-header"><h2>Meu Carrinho</h2><button id="fechar-carrinho-btn" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button></div>
+            <div id="carrinho-itens"></div>
+            <div class="carrinho-footer">
+                <div class="carrinho-resumo">
+                    <div><span>Subtotal</span><span id="carrinho-subtotal">R$ 0,00</span></div>
+                    <div><span>Taxa de Entrega</span><span id="carrinho-taxa-entrega">R$ 5,00</span></div>
+                </div>
+                <div class="carrinho-total"><span>Total</span><span id="carrinho-total-valor">R$ 0,00</span></div>
+                <div class="carrinho-actions"><button id="btn-finalizar-pedido">Finalizar Pedido</button></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modalLogin" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Identificação</h2></div>
+            <div class="form-group">
+                <label for="input-telefone">Seu WhatsApp (apenas números)</label>
+                <input type="tel" id="input-telefone" placeholder="11999999999" maxlength="11">
+                <small style="color: #666;">Digite 10 ou 11 números: DDD + Telefone.</small>
+            </div>
+            <div class="form-actions"><button id="btn-continuar-login" class="btn-primary">Continuar</button><button id="btn-voltar-carrinho" class="btn-secondary">Voltar ao Carrinho</button></div>
+        </div>
+    </div>
+    
+    <div id="modalConfirmarDados" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Confirme seus Dados</h2></div>
+            <p>Olá de novo! Encontramos seu cadastro. Os dados abaixo estão corretos?</p>
+            <div id="dados-confirmacao"></div>
+            <div class="form-actions">
+                <button id="btn-dados-corretos" class="btn-primary">Sim, estão corretos!</button>
+                <button id="btn-editar-dados" class="btn-secondary">Não, quero editar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modalEndereco" class="modal">
+        <div class="modal-content">
+             <div class="modal-header"><h2>Onde será a entrega?</h2></div>
+             <p style="margin-bottom: 15px; font-size: 14px; color: #666;">Como é sua primeira vez (ou você pediu para editar), precisamos do seu endereço.</p>
+            <div class="form-group"><label>Contato (WhatsApp)</label><input type="tel" id="input-contato-endereco" readonly></div>
+             <div class="form-group"><label for="input-nome">Nome Completo</label><input type="text" id="input-nome" placeholder="Seu nome completo"></div>
+            <div class="form-group"><label for="input-endereco">Endereço Completo</label><input type="text" id="input-endereco" placeholder="Rua, Número, Bairro"></div>
+            <div class="form-group"><label for="input-referencia">Ponto de Referência (Opcional)</label><input type="text" id="input-referencia" placeholder="Ex: Próximo ao mercado"></div>
+            <div class="form-actions"><button id="btn-salvar-endereco" class="btn-primary">Salvar e Ir para Pagamento</button></div>
+        </div>
+    </div>
+    
+    <div id="modalPagamento" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h2>💰 Forma de Pagamento</h2></div>
+            
+            <div class="metodo-pagamento" data-metodo="Dinheiro">
+                <i class="fas fa-money-bill-wave"></i>
+                <div>
+                    <strong>Dinheiro</strong>
+                    <p style="font-size: 12px; color: #666;">Pagamento na entrega</p>
+                </div>
+            </div>
+            
+            <div class="troco-container">
+                <div style="margin-bottom: 15px; display: flex; align-items: center;">
+                    <i class="fas fa-exchange-alt" style="font-size: 20px; margin-right: 10px; color: var(--laranja);"></i>
+                    <div style="flex-grow: 1;">
+                        <label for="troco-input" style="display: block; margin-bottom: 5px; font-weight: bold;">Precisa de troco para quanto?</label>
+                        <div style="display: flex; align-items: center;">
+                            <span style="margin-right: 5px; font-weight: bold;">R$</span>
+                            <input type="number" id="troco-input" class="form-group" 
+                                       placeholder="Ex: 50,00" step="0.01" min="0"
+                                       style="flex-grow: 1; margin-bottom: 0;">
+                        </div>
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Deixe em branco se não precisar de troco
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="troco-calculado" id="troco-calculado">
+                    <i class="fas fa-calculator" style="margin-right: 5px;"></i>
+                    <span id="valor-troco-texto"></span>
+                </div>
+            </div>
+            
+            <div class="metodo-pagamento" data-metodo="PIX">
+                <i class="fas fa-qrcode"></i>
+                <div>
+                    <strong>PIX</strong>
+                    <p style="font-size: 12px; color: #666;">Chave na entrega</p>
+                </div>
+            </div>
+            
+            <div class="metodo-pagamento" data-metodo="Cartão">
+                <i class="fas fa-credit-card"></i>
+                <div>
+                    <strong>Cartão</strong>
+                    <p style="font-size: 12px; color: #666;">Maquininha na entrega</p>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button id="btn-confirmar-pagamento" class="btn-primary">✅ Confirmar e Gerar Pedido</button>
+                <button id="btn-voltar-etapa" class="btn-secondary">↩️ Voltar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modalConfirmacao" class="modal">
+        <div class="modal-content confirmacao-content">
+            <div class="emoji-header">🍔🎉🚀</div>
+            <h2>Pedido Confirmado! 🛵</h2>
+            
+            <div class="success-box">
+                <p style="margin-bottom: 10px;">Obrigado, <strong id="nome-cliente-confirmacao" style="color: var(--laranja);"></strong>!</p>
+                <p>Seu pedido foi enviado para a cozinha e já está sendo preparado com carinho! 👨‍🍳🔥</p>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>📋 Nº do Pedido:</strong> <span id="numero-pedido" style="font-weight: bold; color: var(--marrom);"></span></p>
+                <p><strong>⏱ Tempo estimado:</strong> 40-50 minutos</p>
+                <p><strong>📱 Você receberá:</strong> Atualizações por WhatsApp</p>
+            </div>
+            
+            <div class="codigo-entrega-container">
+                <div class="codigo-entrega-label">🔑 Seu Código de Entrega</div>
+                <div id="codigo-entrega" class="codigo-entrega"></div>
+                <small style="display: block; margin-top: 5px; color: #666;">Mostre este código ao entregador</small>
+            </div>
+            
+            <div style="margin-top: 25px; font-size: 14px; color: #666;">
+                <p>🍟 Seu lanche está a caminho! Agradecemos pela preferência! ❤️</p>
+            </div>
+            
+            <button id="btn-novo-pedido" class="btn-primary" style="margin-top: 20px;">
+                🍔 Fazer Novo Pedido
+            </button>
+            
+            <div id="btn-scroll-up" class="modal-scroll-btn">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div id="btn-scroll-down" class="modal-scroll-btn">
+                <i class="fas fa-arrow-down"></i>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalHistorico" class="modal">
+        <div class="modal-content" style="overflow-y: auto;">
+            <div class="modal-header">
+                <h2>Meu Histórico de Pedidos</h2>
+                <button id="btn-fechar-historico" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
+            </div>
+            <div id="historico-container">
+                <p>Para ver seu histórico, precisamos do seu WhatsApp.</p>
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+                 <button id="btn-buscar-historico" class="btn-primary">Buscar com meu WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const NOME_HAMBURGUERIA = "DokaBurger";
+        const TAXA_ENTREGA = 5.00;
+        
+        const produtosContainer = document.querySelector('.produtos-container');
+        const botoesCategoria = document.querySelectorAll('.categoria-btn');
+        const contadorCarrinho = document.querySelector('.carrinho-contador');
+        const modalCarrinho = document.getElementById('modalCarrinho');
+        const modalLogin = document.getElementById('modalLogin');
+        const modalEndereco = document.getElementById('modalEndereco');
+        const modalPagamento = document.getElementById('modalPagamento');
+        const modalConfirmacao = document.getElementById('modalConfirmacao');
+        const modalConfirmarDados = document.getElementById('modalConfirmarDados');
+        const carrinhoItensContainer = document.getElementById('carrinho-itens');
+        const carrinhoSubtotal = document.getElementById('carrinho-subtotal');
+        const carrinhoTaxaEntrega = document.getElementById('carrinho-taxa-entrega');
+        const carrinhoTotalValor = document.getElementById('carrinho-total-valor');
+        const btnNovoPedido = document.getElementById('btn-novo-pedido');
+        const modalHistorico = document.getElementById('modalHistorico');
+        const historicoContainer = document.getElementById('historico-container');
+        const btnMeusPedidos = document.getElementById('btn-meus-pedidos');
+        const btnBuscarHistorico = document.getElementById('btn-buscar-historico');
+
+        let carrinho = [];
+        let clienteAtual = null;
+        let metodoPagamentoSelecionado = null;
+        let contextoLogin = 'pedido'; // Variável de contexto adicionada
+
+        // Função de throttling para otimizar eventos
+        function throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Verifica se um elemento está visível
+        function isElementVisible(el) {
+            const rect = el.getBoundingClientRect();
+            return (
+                rect.top <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.bottom >= 0
+            );
+        }
+
+        const cardapioDB = [
+            // Burgers 180g
+            { id: 'p1', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon-180g.avif', categoria: 'Burgers 180g' },
+            { id: 'p2', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: '2x Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka%20duty.avif', categoria: 'Burgers 180g' },
+            { id: 'p3', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80', categoria: 'Burgers 180g' },
+            { id: 'p4', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-burguer-180g.avif', categoria: 'Burgers 180g' },
+            { id: 'p5', nome: 'doka cheese egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-egg-bacon.avif', categoria: 'Burgers 180g' },
+            { id: 'p6', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 180g' },
+            
+            // Burgers 120g
+            { id: 'b12_1', nome: 'Doka Burguer 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cheese-burguer-doka.jpg', categoria: 'Burgers 120g' },
+            { id: 'b12_3', nome: 'Doka Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-cheddar-bacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_4', nome: 'Doka Salada 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, alface ou rúcula, tomate e molho.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/bell-cheese-salada.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_5', nome: 'Dokinha cheese Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/smash-cheese-bacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_9', nome: 'Doka Classic Burguer', preco: 28.90, descricao: "Pão, 2 smash's 70g, 2 queijos cheddar, ketchup, mostarda, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-classic-burguer.jpg', categoria: 'Burgers 120g' },
+            { id: 'b12_10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, bacon, ketchup e mostarda.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-triplo-cheesebacon.avif', categoria: 'Burgers 120g' },
+            { id: 'b12_11', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: "Pão, 3 smash's 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.", imagem: 'https://engeve89.github.io/imagenscardapio/foto/triplo-cheesesalada.avif', categoria: 'Burgers 120g' },
+
+            // Lanches de Frango
+            { id: 'f2', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/doka-kids-chicken.avif', categoria: 'Frango' },
+            
+            // Combos
+            { id: 'c1', nome: 'Combo Dokinha 01', preco: 44.90, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha01.avif', categoria: 'Combos' },
+            { id: 'c2', nome: 'Combo Dokinha Salada', preco: 48.60, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, cebola roxa, picles, alface, tomate, maionese + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-dokinha-salada.avif', categoria: 'Combos' },
+            { id: 'c3', nome: 'Combo Catubacon', preco: 54.99, descricao: 'Pão brioche, Hambúrguer 150g, Catupiry, bacon crocante, molho especial + Fritas + Refri 350ml.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-catubacon.jpg', categoria: 'Combos' },
+            { id: 'c4', nome: 'Combo Doka Casal Fit', preco: 69.99, descricao: '2x burguers clássicos (150g cada) + 2x Porções de batata (aprox. 100g cada) + 2x refri lata.', imagem: 'https://engeve89.github.io/imagenscardapio/foto/combo-doka-casal-fit.avif', categoria: 'Combos' },
+
+            // Bebidas
+            { id: 'b1', nome: 'Coca-Cola Original', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-lata350ml.avif', categoria: 'Bebidas' },
+            { id: 'b2', nome: 'Coca-Cola 1L', preco: 12.00, descricao: 'Garrafa 1L', imagem: 'https://engeve89.github.io/imagenscardapio/foto/coca-cola-1litros.avif', categoria: 'Bebidas' },
+            { id: 'b3', nome: 'Guaraná Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-guaran%C3%A1-fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b4', nome: 'Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b5', nome: 'Fanta Uva', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-uva-fanta-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b6', nome: 'Sprite Limão Zero', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/sprite-lima-zero-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/refrigerante-schweppes-citrus-350ml.avif', categoria: 'Bebidas' },
+            { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engeve89.github.io/imagenscardapio/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
+        ];
+
+        function carregarProdutos(categoriaSelecionada) {
+            produtosContainer.innerHTML = '';
+            const produtosFiltrados = cardapioDB.filter(p => p.categoria === categoriaSelecionada);
+            
+            const fragment = document.createDocumentFragment();
+            
+            produtosFiltrados.forEach(produto => {
+                const card = document.createElement('div');
+                card.className = 'produto-card';
+                
+                let precoHtml = `<div class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>`;
+                if (produto.preco_antigo) {
+                    precoHtml = `<div class="produto-preco-container">
+                                        <span class="produto-preco-antigo">R$ ${produto.preco_antigo.toFixed(2).replace('.', ',')}</span>
+                                        <span class="produto-preco">R$ ${produto.preco.toFixed(2).replace('.', ',')}</span>
+                                      </div>`;
+                }
+
+                card.innerHTML = `<div class="produto-imagem-container"><img src="${produto.imagem}" class="produto-imagem" alt="${produto.nome}"></div><div class="produto-conteudo"><div class="produto-nome">${produto.nome} ${produto.badge ? `<span class="produto-badge">${produto.badge}</span>` : ''}</div><div class="produto-descricao">${produto.descricao}</div><div class="produto-footer">${precoHtml}<button class="add-btn" data-id="${produto.id}">+</button></div></div>`;
+                fragment.appendChild(card);
+            });
+            
+            produtosContainer.appendChild(fragment);
+        }
+
+        function adicionarAoCarrinho(id) {
+            const produto = cardapioDB.find(p => p.id === id);
+            const itemExistente = carrinho.find(item => item.id === id);
+            if (itemExistente) { 
+                itemExistente.quantidade++; 
+            } else { 
+                carrinho.push({ 
+                    ...produto, 
+                    quantidade: 1, 
+                    observacao: "" 
+                }); 
+            }
+            atualizarContadorCarrinho();
+            atualizarModalCarrinho();
+        }
+        
+        function removerDoCarrinho(id, removerTudo = false) {
+            const itemIndex = carrinho.findIndex(item => item.id === id);
+            if (itemIndex > -1) {
+                if (removerTudo || carrinho[itemIndex].quantidade === 1) { 
+                    carrinho.splice(itemIndex, 1); 
+                } else { 
+                    carrinho[itemIndex].quantidade--; 
+                }
+            }
+            atualizarContadorCarrinho();
+            atualizarModalCarrinho();
+        }
+
+        function atualizarContadorCarrinho() {
+            const totalItens = carrinho.reduce((total, item) => total + item.quantidade, 0);
+            contadorCarrinho.textContent = totalItens;
+        }
+
+        function atualizarModalCarrinho() {
+            carrinhoItensContainer.innerHTML = '';
+            if (carrinho.length === 0) {
+                carrinhoItensContainer.innerHTML = '<p style="text-align:center; color:#888;">Seu carrinho está vazio.</p>';
+                document.getElementById('btn-finalizar-pedido').style.display = 'none';
+                carrinhoSubtotal.textContent = "R$ 0,00";
+                carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
+                carrinhoTotalValor.textContent = "R$ 0,00";
+                return;
+            }
+
+            document.getElementById('btn-finalizar-pedido').style.display = 'block';
+            let subtotal = 0;
+            
+            const fragment = document.createDocumentFragment();
+            
+            carrinho.forEach(item => {
+                subtotal += item.preco * item.quantidade;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'carrinho-item';
+                itemDiv.innerHTML = `<div class="carrinho-item-header"><div class="carrinho-item-info"><strong>${item.nome}</strong><p>R$ ${item.preco.toFixed(2).replace('.', ',')}</p></div><div class="quantidade-controls"><button onclick="removerDoCarrinho('${item.id}')">-</button><span>${item.quantidade}</span><button onclick="adicionarAoCarrinho('${item.id}')">+</button></div><button class="remover-item-btn" onclick="removerDoCarrinho('${item.id}', true)"><i class="fas fa-trash"></i></button></div><div class="carrinho-item-obs"><input type="text" class="obs-input" data-id="${item.id}" placeholder="📝 Deseja adicionar alguma observação?" value="${item.observacao || ''}"></div>`;
+                fragment.appendChild(itemDiv);
+            });
+            
+            carrinhoItensContainer.appendChild(fragment);
+            
+            const total = subtotal + TAXA_ENTREGA;
+            carrinhoSubtotal.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+            carrinhoTaxaEntrega.textContent = `R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}`;
+            carrinhoTotalValor.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+        
+        function abrirModalCarrinho() { modalCarrinho.style.display = 'flex'; }
+        function fecharModalCarrinho() { modalCarrinho.style.display = 'none'; }
+        function abrirModalLogin() { fecharModalCarrinho(); modalLogin.style.display = 'flex'; document.getElementById('input-telefone').focus(); }
+        function fecharModalLogin() { modalLogin.style.display = 'none'; abrirModalCarrinho(); }
+        async function abrirModalEndereco() {
+            fecharModalLogin();
+            fecharModalConfirmarDados();
+            modalEndereco.style.display = 'flex';
+            const telefoneBruto = clienteAtual.telefone || ''; 
+            document.getElementById('input-contato-endereco').value = telefoneBruto;
+            document.getElementById('input-nome').focus();
+        }
+        function fecharModalEndereco() { modalEndereco.style.display = 'none'; }
+        function abrirModalPagamento() { fecharModalLogin(); fecharModalEndereco(); fecharModalConfirmarDados(); modalPagamento.style.display = 'flex'; }
+        function fecharModalPagamento() { modalPagamento.style.display = 'none'; }
+        function abrirModalConfirmarDados(cliente) {
+            fecharModalLogin();
+            const dadosContainer = document.getElementById('dados-confirmacao');
+            dadosContainer.innerHTML = `
+                <p><strong>Nome:</strong> ${cliente.nome}</p>
+                <p><strong>Endereço:</strong> ${cliente.endereco}</p>
+                ${cliente.referencia ? `<p><strong>Referência:</strong> ${cliente.referencia}</p>` : ''}
+            `;
+            modalConfirmarDados.style.display = 'flex';
+        }
+        function fecharModalConfirmarDados() { modalConfirmarDados.style.display = 'none'; }
+        
+        async function verificarTelefone() {
+            const telefoneInput = document.getElementById('input-telefone');
+            const telefoneCru = telefoneInput.value;
+            const telefoneLimpo = telefoneCru.replace(/\D/g, '');
+
+            if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+                alert("Número incorreto! Por favor, digite 10 ou 11 números (DDD + Telefone).");
+                return;
+            }
+
+            const btnContinuar = document.getElementById('btn-continuar-login');
+            btnContinuar.disabled = true;
+            btnContinuar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+
+            try {
+                const response = await fetch('/api/identificar-cliente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telefone: telefoneLimpo })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Erro ao verificar telefone.');
+                }
+                
+                clienteAtual = data.cliente;
+                clienteAtual.telefone = telefoneCru; // Guarda o telefone no formato original com DD
+
+                // Lógica de contexto aplicada
+                if (contextoLogin === 'historico') {
+                    fecharModalLogin();
+                    abrirModalHistorico();
+                    contextoLogin = 'pedido'; // Reseta o contexto
+                } else {
+                    // Lógica padrão de pedido
+                    if (data.isNew) {
+                        abrirModalEndereco();
+                    } else {
+                        abrirModalConfirmarDados(clienteAtual);
+                    }
+                }
+
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                btnContinuar.disabled = false;
+                btnContinuar.textContent = 'Continuar';
+            }
+        }
+
+        function salvarEndereco() {
+            const nome = document.getElementById('input-nome').value.trim();
+            const endereco = document.getElementById('input-endereco').value.trim();
+            if (!nome || !endereco) { 
+                alert("Por favor, preencha Nome e Endereço."); 
+                return; 
+            }
+            clienteAtual.nome = nome;
+            clienteAtual.endereco = endereco;
+            clienteAtual.referencia = document.getElementById('input-referencia').value.trim();
+            abrirModalPagamento();
+        }
+        
+        function calcularTotalPedido() {
+            const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
+            return subtotal + TAXA_ENTREGA;
+        }
+
+        async function finalizarPedidoComPagamento() {
+            if (!metodoPagamentoSelecionado) {
+                alert("Por favor, selecione uma forma de pagamento.");
+                return;
+            }
+
+            if (metodoPagamentoSelecionado === 'Dinheiro') {
+                const trocoInput = document.getElementById('troco-input');
+                const valorPedido = calcularTotalPedido();
+                if (trocoInput.value && parseFloat(trocoInput.value.replace(',', '.')) <= valorPedido) {
+                    alert("O valor para troco deve ser maior que o total do pedido!");
+                    return;
+                }
+            }
+
+            const btnConfirmar = document.getElementById('btn-confirmar-pagamento');
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+            const pedido = {
+                cliente: clienteAtual,
+                carrinho: carrinho.map(item => ({
+                    nome: item.nome,
+                    preco: item.preco,
+                    quantidade: item.quantidade,
+                    observacao: item.observacao || ""
+                })),
+                pagamento: metodoPagamentoSelecionado,
+                troco: document.getElementById('troco-input').value.replace('.', ',') || null
+            };
+
+            try {
+                const response = await fetch('/api/criar-pedido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pedido)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Falha ao criar o pedido. Tente novamente.');
+                }
+
+                const numeroPedido = data.pedidoId;
+                // Usa os últimos 4 dígitos do telefone limpo como código de entrega
+                const codigoEntrega = clienteAtual.telefone.replace(/\D/g, '').slice(-4); 
+
+                document.getElementById('nome-cliente-confirmacao').textContent = clienteAtual.nome.split(' ')[0];
+                document.getElementById('numero-pedido').textContent = `#${numeroPedido}`;
+                document.getElementById('codigo-entrega').textContent = codigoEntrega;
+
+                fecharModalPagamento();
+                modalConfirmacao.style.display = 'flex';
+                gerenciarBotoesScrollModal();
+
+            } catch (error) {
+                alert(`Ocorreu um erro: ${error.message}`);
+            } finally {
+                btnConfirmar.disabled = false;
+                btnConfirmar.textContent = '✅ Confirmar e Gerar Pedido';
+            }
+        }
+
+        function fecharModalConfirmacao() {
+            modalConfirmacao.style.display = 'none';
+            carrinho = [];
+            metodoPagamentoSelecionado = null;
+            document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo'));
+            document.querySelector('.troco-container').style.display = 'none';
+            document.getElementById('troco-input').value = '';
+            document.getElementById('troco-calculado').style.display = 'none';
+            atualizarContadorCarrinho();
+            atualizarModalCarrinho();
+            const categoriaPrincipal = botoesCategoria[0];
+            botoesCategoria.forEach(btn => btn.classList.remove('ativo'));
+            categoriaPrincipal.classList.add('ativo');
+            carregarProdutos(categoriaPrincipal.dataset.categoria);
+        }
+
+        function gerenciarBotoesScrollModal() {
+            const modalContent = document.querySelector('#modalConfirmacao .modal-content');
+            if (!modalContent) return;
+
+            const btnScrollUp = document.getElementById('btn-scroll-up');
+            const btnScrollDown = document.getElementById('btn-scroll-down');
+
+            const atualizarVisibilidade = () => {
+                if (modalConfirmacao.style.display !== 'flex') return;
+                
+                const hasScroll = modalContent.scrollHeight > modalContent.clientHeight;
+                
+                if (!hasScroll) {
+                    btnScrollUp.style.display = 'none';
+                    btnScrollDown.style.display = 'none';
+                    return;
+                }
+
+                if (modalContent.scrollTop > 20) {
+                    btnScrollUp.style.display = 'flex';
+                } else {
+                    btnScrollUp.style.display = 'none';
+                }
+
+                if (modalContent.scrollTop + modalContent.clientHeight < modalContent.scrollHeight - 20) {
+                    btnScrollDown.style.display = 'flex';
+                } else {
+                    btnScrollDown.style.display = 'none';
+                }
+            };
+
+            const throttledUpdate = throttle(atualizarVisibilidade, 100);
+
+            btnScrollUp.onclick = () => {
+                modalContent.scrollBy({ top: -150, behavior: 'smooth' });
+                setTimeout(throttledUpdate, 300);
+            };
+
+            btnScrollDown.onclick = () => {
+                modalContent.scrollBy({ top: 150, behavior: 'smooth' });
+                setTimeout(throttledUpdate, 300);
+            };
+
+            modalContent.addEventListener('scroll', throttledUpdate);
+            throttledUpdate();
+        }
+
+        function gerenciarBotoesScrollMenu() {
+            const menu = document.querySelector('.menu-categorias');
+            if (!menu) return;
+
+            const btnLeft = document.getElementById('menu-scroll-left');
+            const btnRight = document.getElementById('menu-scroll-right');
+
+            const checkScroll = () => {
+                if (!isElementVisible(menu)) return;
+                
+                const hasHorizontalScroll = menu.scrollWidth > menu.clientWidth;
+
+                if (!hasHorizontalScroll) {
+                    btnLeft.style.display = 'none';
+                    btnRight.style.display = 'none';
+                    return;
+                }
+
+                if (menu.scrollLeft > 0) {
+                    btnLeft.style.display = 'flex';
+                } else {
+                    btnLeft.style.display = 'none';
+                }
+                
+                const maxScrollLeft = menu.scrollWidth - menu.clientWidth;
+                if (menu.scrollLeft < maxScrollLeft - 1) {
+                    btnRight.style.display = 'flex';
+                } else {
+                    btnRight.style.display = 'none';
+                }
+            };
+
+            const throttledCheck = throttle(checkScroll, 100);
+
+            btnLeft.addEventListener('click', () => {
+                menu.scrollBy({ left: -150, behavior: 'smooth' });
+                setTimeout(throttledCheck, 300);
+            });
+
+            btnRight.addEventListener('click', () => {
+                menu.scrollBy({ left: 150, behavior: 'smooth' });
+                setTimeout(throttledCheck, 300);
+            });
+            
+            menu.addEventListener('scroll', throttledCheck);
+            
+            window.addEventListener('resize', throttle(throttledCheck, 200));
+            throttledCheck();
+        }
+
+        function abrirModalHistorico() {
+            modalHistorico.style.display = 'flex';
+            if (clienteAtual && clienteAtual.telefone) {
+                // Remove qualquer caractere não numérico antes de passar para a função
+                const telefoneLimpo = clienteAtual.telefone.replace(/\D/g, ''); 
+                carregarHistorico(telefoneLimpo);
+                btnBuscarHistorico.style.display = 'none';
+            } else {
+                historicoContainer.innerHTML = '<p>Para ver seu histórico, precisamos do seu WhatsApp.</p>';
+                btnBuscarHistorico.style.display = 'block';
+            }
+        }
+        
+        function fecharModalHistorico() {
+            modalHistorico.style.display = 'none';
+        }
+
+        async function carregarHistorico(telefone) {
+            historicoContainer.innerHTML = '<p>Buscando seu histórico... <i class="fas fa-spinner fa-spin"></i></p>';
+            
+            try {
+                const response = await fetch(`/api/historico/${telefone}`);
+                if (!response.ok) {
+                    throw new Error('Não foi possível buscar o histórico. Tente mais tarde.');
+                }
+                const pedidos = await response.json();
+
+                if (pedidos.length === 0) {
+                    historicoContainer.innerHTML = '<p style="text-align:center; color:#888;">Você ainda não fez nenhum pedido conosco.</p>';
+                    return;
+                }
+
+                historicoContainer.innerHTML = '';
+                pedidos.forEach(pedido => {
+                    let dataFormatada = 'Data Indisponível'; // Mensagem padrão se a data for inválida
+                    try {
+                        const dateObject = new Date(pedido.dataPedido);
+                        if (!isNaN(dateObject.getTime())) { // Verifica se a data é válida
+                            dataFormatada = dateObject.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                        } else {
+                            console.warn("Data do pedido inválida:", pedido.dataPedido);
+                        }
+                    } catch (e) {
+                        console.error("Erro ao formatar data do pedido:", pedido.dataPedido, e);
+                    }
+                    
+                    let itensHtml = '';
+                    pedido.itens.forEach(item => {
+                        itensHtml += `<li>${item.quantidade}x ${item.nomeProduto || item.nome} ${item.observacao ? `<i>(${item.observacao})</i>` : ''}</li>`;
+                    });
+
+                    const pedidoCard = document.createElement('div');
+                    pedidoCard.className = 'pedido-card'; 
+                    pedidoCard.innerHTML = `
+                        <div class="pedido-card-header">
+                            <strong>Data: ${dataFormatada}</strong>
+                            <span>Total: R$ ${pedido.valorTotal.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <div class="pedido-card-body">
+                            <p><strong>Status:</strong> ${pedido.status || 'Entregue'}</p>
+                            <ul>${itensHtml}</ul>
+                        </div>
+                    `;
+                    historicoContainer.appendChild(pedidoCard);
+                });
+
+            } catch (error) {
+                historicoContainer.innerHTML = `<p style="color:red; text-align:center;">${error.message}</p>`;
+            }
+        }
+
+        function inicializar() {
+            carregarProdutos('Burgers 180g');
+            atualizarContadorCarrinho();
+            gerenciarBotoesScrollMenu();
+            
+            const trocoInput = document.getElementById('troco-input');
+            trocoInput.addEventListener('input', throttle(function() {
+                const trocoValue = parseFloat(this.value.replace(',', '.')); // Garante que a vírgula é tratada como ponto
+                const valorPedido = calcularTotalPedido();
+                const trocoCalculado = document.getElementById('troco-calculado');
+                
+                if (trocoValue && !isNaN(trocoValue)) {
+                    if (trocoValue > valorPedido) {
+                        const trocoValor = trocoValue - valorPedido;
+                        document.getElementById('valor-troco-texto').textContent = 
+                            `Troco: R$ ${trocoValor.toFixed(2).replace('.', ',')}`;
+                        trocoCalculado.style.display = 'block';
+                    } else {
+                        trocoCalculado.style.display = 'none';
+                    }
+                } else {
+                    trocoCalculado.style.display = 'none';
+                }
+            }, 300));
+
+            botoesCategoria.forEach(botao => { 
+                botao.addEventListener('click', () => { 
+                    botoesCategoria.forEach(btn => btn.classList.remove('ativo')); 
+                    botao.classList.add('ativo'); 
+                    carregarProdutos(botao.dataset.categoria); 
+                }); 
+            });
+            
+            produtosContainer.addEventListener('click', (event) => { 
+                const addBtn = event.target.closest('.add-btn'); 
+                if (addBtn) { 
+                    adicionarAoCarrinho(addBtn.dataset.id); 
+                    addBtn.innerHTML = '<i class="fas fa-check"></i>'; 
+                    addBtn.style.background = 'var(--verde)'; 
+                    setTimeout(() => { 
+                        addBtn.innerHTML = '+'; 
+                        addBtn.style.background = 'var(--laranja)'; 
+                    }, 1000); 
+                } 
+            });
+            
+            document.querySelector('.carrinho-btn').addEventListener('click', () => { 
+                if(carrinho.length === 0) { 
+                    alert('Seu carrinho está vazio!'); 
+                    return; 
+                } 
+                abrirModalCarrinho(); 
+            });
+            
+            carrinhoItensContainer.addEventListener('input', (event) => { 
+                if (event.target.classList.contains('obs-input')) { 
+                    const itemId = event.target.dataset.id; 
+                    const observacaoText = event.target.value; 
+                    const itemNoCarrinho = carrinho.find(item => item.id === itemId); 
+                    if (itemNoCarrinho) { 
+                        itemNoCarrinho.observacao = observacaoText; 
+                    } 
+                } 
+            });
+            
+            document.getElementById('fechar-carrinho-btn').addEventListener('click', fecharModalCarrinho);
+            document.getElementById('btn-voltar-carrinho').addEventListener('click', fecharModalLogin);
+            document.getElementById('btn-finalizar-pedido').addEventListener('click', abrirModalLogin);
+            document.getElementById('btn-continuar-login').addEventListener('click', verificarTelefone);
+            document.getElementById('btn-salvar-endereco').addEventListener('click', salvarEndereco);
+            document.getElementById('btn-confirmar-pagamento').addEventListener('click', finalizarPedidoComPagamento);
+            document.getElementById('btn-voltar-etapa').onclick = () => { fecharModalPagamento(); abrirModalLogin(); };
+            document.getElementById('btn-novo-pedido').addEventListener('click', fecharModalConfirmacao);
+            
+            document.querySelectorAll('.metodo-pagamento').forEach(metodo => { 
+                metodo.addEventListener('click', () => { 
+                    document.querySelectorAll('.metodo-pagamento.ativo').forEach(m => m.classList.remove('ativo')); 
+                    metodo.classList.add('ativo'); 
+                    metodoPagamentoSelecionado = metodo.dataset.metodo; 
+                    
+                    const trocoContainer = document.querySelector('.troco-container');
+                    if (metodoPagamentoSelecionado === 'Dinheiro') {
+                        trocoContainer.style.display = 'block';
+                        document.getElementById('troco-input').focus();
+                    } else {
+                        trocoContainer.style.display = 'none';
+                        document.getElementById('troco-calculado').style.display = 'none';
+                    }
+                }); 
+            });
+            
+            document.getElementById('btn-dados-corretos').addEventListener('click', abrirModalPagamento);
+            document.getElementById('btn-editar-dados').addEventListener('click', () => {
+                fecharModalConfirmarDados();
+                abrirModalEndereco();
+                document.getElementById('input-nome').value = clienteAtual.nome;
+                document.getElementById('input-endereco').value = clienteAtual.endereco;
+                document.getElementById('input-referencia').value = clienteAtual.referencia || '';
+            });
+
+            btnMeusPedidos.addEventListener('click', () => {
+                contextoLogin = 'historico'; // Define o contexto para histórico
+                abrirModalLogin(); // Abre o modal de login para pegar o telefone do cliente
+            });
+            
+            // Lógica do botão de busca atualizada
+            btnBuscarHistorico.addEventListener('click', () => {
+                // A função verificarTelefone já lida com o contexto
+                // Ao clicar em 'Buscar com meu WhatsApp', o fluxo vai para verificarTelefone que,
+                // se o contexto for 'historico', chamará abrirModalHistorico novamente.
+                const telefoneInput = document.getElementById('input-telefone');
+                // Assume que o input-telefone já está preenchido pelo modal de login
+                verificarTelefone(); 
+            });
+
+            document.getElementById('btn-fechar-historico').addEventListener('click', fecharModalHistorico);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializar);
+        } else {
+            inicializar();
+        }
+    </script>
+</body>
+</html>
