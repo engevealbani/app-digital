@@ -153,7 +153,6 @@
         </div>
     </div>
 
-    <!-- NOVO CÓDIGO INICIA AQUI: Modal para Editar Pedido e Endereço -->
     <div id="edit-order-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
         <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-xl">
             <div class="p-5 border-b flex justify-between items-center">
@@ -161,14 +160,11 @@
                 <button id="edit-modal-close-btn" class="text-gray-400 hover:text-gray-800"><i data-lucide="x"></i></button>
             </div>
             <div class="p-6 overflow-y-auto space-y-6">
-                <!-- Seção de Itens do Carrinho -->
                 <div>
                     <h3 class="font-semibold text-lg mb-2">Itens na Sacola</h3>
                     <div id="edit-modal-cart-items" class="space-y-3">
-                        <!-- Itens do carrinho serão injetados aqui pelo JS -->
-                    </div>
+                        </div>
                 </div>
-                <!-- Seção de Endereço -->
                 <div>
                     <h3 class="font-semibold text-lg mb-2">Endereço de Entrega</h3>
                     <form id="edit-address-form" class="space-y-3">
@@ -184,7 +180,6 @@
             </div>
         </div>
     </div>
-    <!-- NOVO CÓDIGO TERMINA AQUI -->
 
     <header class="bg-white sticky top-0 z-40 border-b border-gray-100">
         <div class="container mx-auto px-4">
@@ -477,17 +472,23 @@
             const customMessageCloseBtn = document.getElementById('custom-message-close-btn');
             const editOrderBtn = document.getElementById('edit-order-btn');
             
-            // NOVO CÓDIGO INICIA AQUI: Seletores do Modal de Edição
             const editOrderModal = document.getElementById('edit-order-modal');
             const editModalCloseBtn = document.getElementById('edit-modal-close-btn');
             const editModalCartItems = document.getElementById('edit-modal-cart-items');
             const editAddressForm = document.getElementById('edit-address-form');
             const editModalSaveBtn = document.getElementById('edit-modal-save-btn');
-            // NOVO CÓDIGO TERMINA AQUI
 
             // ===================================================================
             // FUNÇÕES DE PERSISTÊNCIA E UI
             // ===================================================================
+
+            const updateFlyoutButtonVisibility = () => {
+                const activeViewElement = document.querySelector('.view.active');
+                const currentViewId = activeViewElement ? activeViewElement.id : '';
+                const isMenuVisible = currentViewId === 'menu-view';
+                const shouldShow = isMenuVisible && carrinho.length > 0;
+                mobileCartFlyout.classList.toggle('hidden', !shouldShow);
+            };
 
             const saveState = () => {
                 localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(carrinho));
@@ -522,23 +523,24 @@
                     link.classList.toggle('text-gray-500', !isActive);
                 });
                 window.scrollTo(0, 0);
+                updateFlyoutButtonVisibility();
             };
             
             const renderMenu=(filter="")=>{menuContainer.innerHTML="";const t=filter.toLowerCase().trim();let e=!1;if(0===categories.length)return void(menuContainer.innerHTML='<p class="text-center text-red-500 py-10">Erro ao carregar o cardápio. Tente recarregar a página.</p>');categories.forEach(r=>{const o=menuData[r].filter(e=>e.nome.toLowerCase().includes(t)||e.descricao.toLowerCase().includes(t));if(0!==o.length){e=!0;const a=document.createElement("div");a.id=`category-${r.replace(/\s/g,"-")}`,a.className="mb-8 scroll-mt-32",a.innerHTML=`<h2 class="text-2xl font-bold mb-4">${r}</h2>`;const n=document.createElement("div");n.className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8",o.forEach(t=>{const e=document.createElement("div");e.className="bg-white rounded-xl overflow-hidden flex gap-4 cursor-pointer hover:shadow-lg transition-shadow duration-300 border border-gray-100",e.innerHTML=`
-                                        <div class="flex-grow p-4 flex flex-col justify-between">
-                                            <div>
-                                                <h3 class="font-bold text-lg">${t.nome}</h3>
-                                                <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>
+                                            <div class="flex-grow p-4 flex flex-col justify-between">
+                                                <div>
+                                                    <h3 class="font-bold text-lg">${t.nome}</h3>
+                                                    <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>
+                                                </div>
+                                                <div class="flex items-baseline gap-2 mt-4">
+                                                    ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}
+                                                    <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>
+                                                </div>
                                             </div>
-                                            <div class="flex items-baseline gap-2 mt-4">
-                                                ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}
-                                                <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>
+                                            <div class="relative flex-shrink-0">
+                                                <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">
                                             </div>
-                                        </div>
-                                        <div class="relative flex-shrink-0">
-                                            <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">
-                                        </div>
-                                    `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
+                                        `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
             const renderCategories=()=>{desktopCategoryList.innerHTML="",mobileCategoryList.innerHTML="",categories.forEach(t=>{const e=activeCategory===t,r=`category-${t.replace(/\s/g,"-")}`,o=document.createElement("li"),a=document.createElement("button");a.textContent=t,a.className=`w-full text-left px-3 py-2 rounded-md font-semibold transition-colors ${e?"category-btn-active":"text-gray-600 hover:bg-gray-100"}`,a.onclick=()=>handleCategoryClick(t,r),o.appendChild(a),desktopCategoryList.appendChild(o);const n=document.createElement("button");n.textContent=t,n.className=`inline-block px-4 py-2 rounded-full text-sm font-semibold mr-2 transition-colors ${e?"category-btn-active":"bg-white text-gray-700 border"}`,n.onclick=()=>handleCategoryClick(t,r),mobileCategoryList.appendChild(n)})};
             const handleCategoryClick=(t,e)=>{activeCategory=t,searchInput.value="",renderMenu(),renderCategories();const r=document.getElementById(e);if(r){const o=-120,a=r.getBoundingClientRect().top+window.pageYOffset+o;window.scrollTo({top:a,behavior:"smooth"})}};
 
@@ -548,7 +550,6 @@
                 
                 mobileCartBadge.textContent = cartItemCount;
                 mobileCartBadge.classList.toggle('hidden', carrinho.length === 0);
-                mobileCartFlyout.classList.toggle('hidden', carrinho.length === 0);
                 mobileFlyoutTotal.textContent = formatCurrency(total);
                 desktopCheckoutBtn.disabled = carrinho.length === 0;
 
@@ -580,6 +581,7 @@
                     });
                 }
                 lucide.createIcons();
+                updateFlyoutButtonVisibility();
             };
             
             const showProductModal = (product) => {
@@ -830,17 +832,14 @@
                 lucide.createIcons();
             };
 
-            // NOVO CÓDIGO INICIA AQUI: Funções para o Modal de Edição de Pedido
             const renderEditOrderModal = () => {
                 if (!clienteAtual || carrinho.length === 0) {
                     editOrderModal.classList.add('hidden');
                     return;
                 }
 
-                // Limpa o conteúdo anterior
                 editModalCartItems.innerHTML = '';
 
-                // Renderiza os itens do carrinho no modal
                 carrinho.forEach((item, index) => {
                     const itemHtml = `
                         <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
@@ -857,28 +856,25 @@
                 });
                 lucide.createIcons();
 
-                // Preenche o formulário de endereço
                 editAddressForm.elements.endereco.value = clienteAtual.endereco || '';
                 editAddressForm.elements.referencia.value = clienteAtual.referencia || '';
 
-                // Adiciona listeners para os botões de remover
                 document.querySelectorAll('.remove-item-from-modal-btn').forEach(btn => {
                     btn.onclick = (e) => {
                         const indexToRemove = parseInt(e.currentTarget.dataset.index, 10);
                         carrinho.splice(indexToRemove, 1);
                         
-                        // Se o carrinho ficar vazio, fecha o modal e volta pro menu
                         if (carrinho.length === 0) {
                             editOrderModal.classList.add('hidden');
                             showView('menu');
                             showMessageModal("Seu carrinho ficou vazio. Adicione novos itens!");
                         } else {
-                            renderEditOrderModal(); // Re-renderiza o modal para atualizar a lista
+                            renderEditOrderModal();
                         }
                         
                         saveState();
-                        renderCart(); // Atualiza a sacola do desktop/mobile
-                        renderCheckoutView(); // Atualiza o resumo do checkout
+                        renderCart();
+                        renderCheckoutView();
                     };
                 });
             };
@@ -889,7 +885,6 @@
             };
 
             const saveOrderAndAddressChanges = () => {
-                // Salva os dados do endereço
                 const newAddress = editAddressForm.elements.endereco.value.trim();
                 const newReference = editAddressForm.elements.referencia.value.trim();
 
@@ -898,15 +893,14 @@
                     clienteAtual.referencia = newReference;
                 } else {
                     showMessageModal("O campo de endereço não pode ficar vazio.");
-                    return; // Impede o fechamento do modal se o endereço estiver vazio
+                    return;
                 }
 
                 saveState();
-                renderCheckoutView(); // Atualiza a UI da tela de checkout com os novos dados
+                renderCheckoutView();
                 editOrderModal.classList.add('hidden');
                 showMessageModal("Alterações salvas com sucesso!");
             };
-            // NOVO CÓDIGO TERMINA AQUI
 
             // ===================================================================
             // EVENT LISTENERS E LÓGICA DE NEGÓCIO
@@ -933,13 +927,10 @@
 
             identCancelBtn.addEventListener('click', () => identModal.classList.add('hidden'));
             
-            // Evento para o botão de editar o pedido na tela de checkout
             editOrderBtn.addEventListener('click', showEditOrderModal);
 
-            // NOVO CÓDIGO INICIA AQUI: Listeners do Modal de Edição
             editModalCloseBtn.addEventListener('click', () => editOrderModal.classList.add('hidden'));
             editModalSaveBtn.addEventListener('click', saveOrderAndAddressChanges);
-            // NOVO CÓDIGO TERMINA AQUI
 
             identForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -973,7 +964,7 @@
                     }
 
                     clienteAtual = data.cliente;
-                    clienteAtual.telefone = telefoneCru; // Guarda o telefone formatado
+                    clienteAtual.telefone = telefoneCru;
                     saveState();
                     identModal.classList.add('hidden');
 
@@ -995,7 +986,6 @@
                 }
             });
 
-            // NOVA FUNÇÃO: Adiciona máscara de formatação para o telefone
             const handlePhoneInput = (event) => {
                 let input = event.target;
                 input.value = phoneMask(input.value);
