@@ -163,7 +163,7 @@
                 <div>
                     <h3 class="font-semibold text-lg mb-2">Itens na Sacola</h3>
                     <div id="edit-modal-cart-items" class="space-y-3">
-                        </div>
+                    </div>
                 </div>
                 <div>
                     <h3 class="font-semibold text-lg mb-2">Endereço de Entrega</h3>
@@ -195,9 +195,6 @@
                     <button onclick="showMessageModal('Página de promoções em breve!')" class="text-gray-500 hover:text-gray-800 h-full flex items-center">Promoções</button>
                     <button id="history-btn-desktop" class="nav-link text-gray-500 hover:text-gray-800 h-full flex items-center">Meus Pedidos</button>
                 </nav>
-                <div class="flex items-center gap-4">
-                    <button id="login-register-btn" class="btn-primary font-semibold py-2 px-5 rounded-full text-sm">Entrar</button>
-                </div>
             </div>
         </div>
     </header>
@@ -317,10 +314,10 @@
 
                 <div id="success-view" class="view pt-6">
                     <div class="p-4 md:p-8 text-center bg-white rounded-xl shadow-sm border-gray-100">
-                        <div class="w-20 h-20 bg-laranja-100 rounded-full mx-auto flex items-center justify-center mb-4" style="background-color: rgba(255, 107, 0, 0.1);">
-                            <i data-lucide="check" class="w-12 h-12" style="color: var(--laranja);"></i>
+                        <div class="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4" style="background-color: rgba(37, 211, 102, 0.1);">
+                            <i data-lucide="check" class="w-12 h-12" style="color: var(--verde-confirmacao);"></i>
                         </div>
-                        <h1 class="text-3xl font-bold mb-4" style="color: var(--laranja);">Pedido Enviado!</h1>
+                        <h1 class="text-3xl font-bold mb-4" style="color: var(--keeta-dark);">Pedido Enviado!</h1>
                         <p class="text-lg text-gray-700 mb-6">Obrigado pela preferência! Seu pedido foi recebido e já está sendo preparado.</p>
                         <div id="success-receipt" class="bg-gray-50 p-4 rounded-lg border text-left font-mono text-sm max-w-md mx-auto whitespace-pre-wrap"></div>
                         <button id="success-back-btn" class="mt-8 btn-primary font-bold py-3 px-8 rounded-lg">Voltar ao Cardápio</button>
@@ -447,7 +444,6 @@
             const mobileFlyoutTotal = document.getElementById('mobile-flyout-total');
             const historyBtnDesktop = document.getElementById('history-btn-desktop');
             const historyBtnMobile = document.getElementById('history-btn-mobile');
-            const loginRegisterBtn = document.getElementById('login-register-btn');
             const identModal = document.getElementById('identification-modal');
             const identForm = document.getElementById('ident-form');
             const identCancelBtn = document.getElementById('ident-cancel-btn');
@@ -527,20 +523,20 @@
             };
             
             const renderMenu=(filter="")=>{menuContainer.innerHTML="";const t=filter.toLowerCase().trim();let e=!1;if(0===categories.length)return void(menuContainer.innerHTML='<p class="text-center text-red-500 py-10">Erro ao carregar o cardápio. Tente recarregar a página.</p>');categories.forEach(r=>{const o=menuData[r].filter(e=>e.nome.toLowerCase().includes(t)||e.descricao.toLowerCase().includes(t));if(0!==o.length){e=!0;const a=document.createElement("div");a.id=`category-${r.replace(/\s/g,"-")}`,a.className="mb-8 scroll-mt-32",a.innerHTML=`<h2 class="text-2xl font-bold mb-4">${r}</h2>`;const n=document.createElement("div");n.className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8",o.forEach(t=>{const e=document.createElement("div");e.className="bg-white rounded-xl overflow-hidden flex gap-4 cursor-pointer hover:shadow-lg transition-shadow duration-300 border border-gray-100",e.innerHTML=`
-                                            <div class="flex-grow p-4 flex flex-col justify-between">
-                                                <div>
-                                                    <h3 class="font-bold text-lg">${t.nome}</h3>
-                                                    <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>
+                                                <div class="flex-grow p-4 flex flex-col justify-between">
+                                                    <div>
+                                                        <h3 class="font-bold text-lg">${t.nome}</h3>
+                                                        <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>
+                                                    </div>
+                                                    <div class="flex items-baseline gap-2 mt-4">
+                                                        ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}
+                                                        <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>
+                                                    </div>
                                                 </div>
-                                                <div class="flex items-baseline gap-2 mt-4">
-                                                    ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}
-                                                    <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>
+                                                <div class="relative flex-shrink-0">
+                                                    <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">
                                                 </div>
-                                            </div>
-                                            <div class="relative flex-shrink-0">
-                                                <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">
-                                            </div>
-                                        `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
+                                            `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
             const renderCategories=()=>{desktopCategoryList.innerHTML="",mobileCategoryList.innerHTML="",categories.forEach(t=>{const e=activeCategory===t,r=`category-${t.replace(/\s/g,"-")}`,o=document.createElement("li"),a=document.createElement("button");a.textContent=t,a.className=`w-full text-left px-3 py-2 rounded-md font-semibold transition-colors ${e?"category-btn-active":"text-gray-600 hover:bg-gray-100"}`,a.onclick=()=>handleCategoryClick(t,r),o.appendChild(a),desktopCategoryList.appendChild(o);const n=document.createElement("button");n.textContent=t,n.className=`inline-block px-4 py-2 rounded-full text-sm font-semibold mr-2 transition-colors ${e?"category-btn-active":"bg-white text-gray-700 border"}`,n.onclick=()=>handleCategoryClick(t,r),mobileCategoryList.appendChild(n)})};
             const handleCategoryClick=(t,e)=>{activeCategory=t,searchInput.value="",renderMenu(),renderCategories();const r=document.getElementById(e);if(r){const o=-120,a=r.getBoundingClientRect().top+window.pageYOffset+o;window.scrollTo({top:a,behavior:"smooth"})}};
 
@@ -842,16 +838,16 @@
 
                 carrinho.forEach((item, index) => {
                     const itemHtml = `
-                        <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
-                            <div class="flex-grow">
-                                <p class="font-semibold">${item.quantidade}x ${item.nome}</p>
-                                <p class="text-sm text-gray-600">${formatCurrency(item.preco * item.quantidade)}</p>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                                <div class="flex-grow">
+                                    <p class="font-semibold">${item.quantidade}x ${item.nome}</p>
+                                    <p class="text-sm text-gray-600">${formatCurrency(item.preco * item.quantidade)}</p>
+                                </div>
+                                <button class="remove-item-from-modal-btn text-red-500 hover:text-red-700 p-2" data-index="${index}">
+                                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                </button>
                             </div>
-                            <button class="remove-item-from-modal-btn text-red-500 hover:text-red-700 p-2" data-index="${index}">
-                                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                            </button>
-                        </div>
-                    `;
+                        `;
                     editModalCartItems.innerHTML += itemHtml;
                 });
                 lucide.createIcons();
@@ -920,7 +916,6 @@
             desktopCheckoutBtn.addEventListener('click', handleCheckout);
             mobileCartBtn.addEventListener('click', handleCheckout);
             mobileCheckoutFlyoutBtn.addEventListener('click', handleCheckout);
-            loginRegisterBtn.addEventListener('click', () => showIdentModal('checkout'));
             
             historyBtnDesktop.addEventListener('click', handleViewHistory);
             historyBtnMobile.addEventListener('click', handleViewHistory);
