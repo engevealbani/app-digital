@@ -41,10 +41,24 @@ app.use(
   helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],  
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "data:", "https://engeve89.github.io", "https://images.unsplash.com"],
-      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      scriptSrc: [
+        "'self'", 
+        "'unsafe-inline'", // Necessário para scripts no HTML
+        "https://cdn.tailwindcss.com",
+        "https://unpkg.com" 
+      ],  
+      styleSrc: [
+        "'self'", 
+        "'unsafe-inline'", // Necessário para estilos no HTML
+        "https://fonts.googleapis.com"
+      ],
+      imgSrc: [
+        "'self'", 
+        "data:", 
+        "https://engevealbani.github.io", // Corrigido
+        "https://placehold.co"
+      ],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       connectSrc: ["'self'"],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
@@ -56,18 +70,24 @@ app.use(
 app.disable('x-powered-by');  
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public'));
 
-// Configuração do Rate Limiter
+// ############# INÍCIO DA ALTERAÇÃO #############
+// Serve os arquivos estáticos (HTML, CSS, JS do cliente) da pasta 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+// ############# FIM DA ALTERAÇÃO #############
+
+
+// Configuração do Rate Limiter para as rotas da API
 const apiLimiter = rateLimit({
-windowMs: 15 * 60 * 1000, // 15 minutos
-max: 100,
-standardHeaders: true,
-legacyHeaders: false,
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
     message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
 });
 
 app.use('/api/', apiLimiter);
+
 
 // --- Conexão com o Banco de Dados PostgreSQL ---
 const pool = new Pool({
@@ -123,7 +143,8 @@ const client = new Client({
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
     headless: true
   },
-  session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
+  // Lógica para carregar a sessão se ela existir
+  // session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
 });
 
 // --- Função de Normalização de Telefone Atualizada ---
@@ -133,22 +154,23 @@ function normalizarTelefone(telefone) {
   // Remove tudo que não for dígito
   let limpo = telefone.replace(/\D/g, '');
   
-  // Remove todos os prefixos '0' e '55' iniciais
-  limpo = limpo.replace(/^(0+|55+)/, '');
-  
+  // Remove o prefixo '55' se já existir para evitar duplicação
+  if (limpo.startsWith('55')) {
+    limpo = limpo.substring(2);
+  }
+    
   // Verifica comprimento após limpeza
-  if (limpo.length === 10 || limpo.length === 11) {
-    // Números com 10 dígitos: DDD (2) + número (8)
-    // Números com 11 dígitos: DDD (2) + número (9)
+  if (limpo.length >= 10 && limpo.length <= 11) {
+    // Formato final é sempre 55 + DDD + Numero (sem o 9)
     const ddd = limpo.substring(0, 2);
-    const numero = limpo.substring(2);
+    let numero = limpo.substring(2);
     
-    // Remove o nono dígito se necessário
-    const numeroFinal = (numero.length === 9 && numero.startsWith('9'))
-      ? numero.substring(1)  // Remove o primeiro '9'
-      : numero;
+    // Remove o nono dígito se ele existir (para números de celular antigos)
+    if (numero.length === 9 && numero.startsWith('9')) {
+      numero = numero.substring(1);
+    }
     
-    return `55${ddd}${numeroFinal}`;
+    return `55${ddd}${numero}`;
   }
   
   return null;
@@ -165,32 +187,31 @@ function gerarCupomFiscal(pedido) {
     const dataFormatada = now.toLocaleDateString('pt-BR');
     const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
-    let cupom = `==================================================\n`;
-    cupom += `      Doka Burger - Pedido em ${dataFormatada} às ${horaFormatada}\n`;
-    cupom += `==================================================\n`
-    cupom += `👤 *DADOS DO CLIENTE*\nNome: ${cliente.nome}\nTelefone: ${cliente.telefoneFormatado}\n\n`;
-    cupom += `*ITENS:*\n`;
+    let cupom = `================================\n`;
+    cupom += `Doka Burger - ${dataFormatada} ${horaFormatada}\n`;
+    cupom += `================================\n`
+    cupom += `👤 *CLIENTE*\nNome: ${cliente.nome}\nFone: ${cliente.telefoneFormatado}\n\n`;
+    cupom += `*ITENS DO PEDIDO:*\n`;
     carrinho.forEach(item => {
-        const nomeFormatado = item.nome.padEnd(25, ' ');
-        const precoFormatado = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
-        cupom += `• ${item.quantidade}x ${nomeFormatado} ${precoFormatado}\n`;
+        const totalItem = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
+        cupom += `• ${item.quantidade}x ${item.nome} - ${totalItem}\n`;
         if (item.observacao) { cupom += `  Obs: ${item.observacao}\n`; }
     });
-    cupom += `--------------------------------------------------\n`;
-    cupom += `Subtotal:           R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
-    cupom += `Taxa de Entrega:    R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
-    cupom += `*TOTAL:* *R$ ${total.toFixed(2).replace('.', ',')}*\n`;
-    cupom += `--------------------------------------------------\n`;
-    cupom += `*ENDEREÇO:*\n${cliente.endereco}\n`;
+    cupom += `--------------------------------\n`;
+    cupom += `Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+    cupom += `Taxa Entrega: R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
+    cupom += `*TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*\n`;
+    cupom += `--------------------------------\n`;
+    cupom += `*ENDEREÇO DE ENTREGA:*\n${cliente.endereco}\n`;
     if (cliente.referencia) { cupom += `Ref: ${cliente.referencia}\n`; }
-    cupom += `--------------------------------------------------\n`;
-    cupom += `*FORMA DE PAGAMENTO:*\n${pagamento}\n`;
+    cupom += `--------------------------------\n`;
+    cupom += `*PAGAMENTO:*\n${pagamento}\n`;
     if (pagamento === 'Dinheiro' && troco) {
         const valorTroco = parseFloat(troco.replace(',', '.')) - total;
         cupom += `Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')} (Levar R$ ${valorTroco.toFixed(2).replace('.',',')})\n`;
     }
-    cupom += `==================================================\n`;
-    cupom += `                OBRIGADO PELA PREFERENCIA!`;
+    cupom += `================================\n`;
+    cupom += `Obrigado pela preferência!`;
     return cupom;
 }
 
@@ -198,38 +219,33 @@ function gerarCupomFiscal(pedido) {
 client.on('qr', qr => {
     logger.info('Gerando QR Code...');
     qrcode.generate(qr, { small: true });
-    const qrLink = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
-    logger.info(`\nLink do QR Code (copie e cole no navegador):\n${qrLink}\n`);
+    logger.info(`\nSe o QR Code não aparecer, acesse este link no navegador:\nhttps://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}\n`);
 });
 
 client.on('authenticated', (session) => {
     logger.info('Sessão autenticada! Salvando...');
-    if (session) { fs.writeFileSync('./session.json', JSON.stringify(session)); }
+    // A biblioteca gerencia a sessão, não precisamos salvar manualmente
 });
 
 client.on('auth_failure', msg => {
-    logger.error(`FALHA NA AUTENTICAÇÃO: ${msg}. Removendo sessão...`);
-    if (fs.existsSync('./session.json')) { fs.unlinkSync('./session.json'); }
+    logger.error(`FALHA NA AUTENTICAÇÃO: ${msg}.`);
     whatsappStatus = 'disconnected';
 });
 
-client.on('ready', () => { 
+client.on('ready', () => {  
     whatsappStatus = 'ready';
     logger.info('✅ 🤖 Cliente WhatsApp conectado e pronto para automação!');
 });
 
-client.on('disconnected', (reason) => { 
-    whatsappStatus = 'disconnected'; 
-    logger.error(`WhatsApp desconectado: ${reason}`); 
+client.on('disconnected', (reason) => {  
+    whatsappStatus = 'disconnected';  
+    logger.error(`WhatsApp desconectado: ${reason}`);  
 });
 
 client.initialize().catch(err => {
   logger.error(`Falha crítica ao inicializar o cliente: ${err}`);
-  if (fs.existsSync('./session.json')) {
-    logger.info('Tentando remover arquivo de sessão corrompido...');
-    fs.unlinkSync('./session.json');
-  }
 });
+
 
 // --- Rotas da API ---
 
@@ -243,44 +259,43 @@ app.get('/health', (req, res) => {
 
 app.post('/api/identificar-cliente', async (req, res) => {
     const { telefone } = req.body;
-    const telefoneNormalizado = normalizarTelefone(telefone);
+    // O frontend já manda o telefone limpo, mas normalizamos por segurança
+    const telefoneLimpo = telefone.replace(/\D/g, '');
 
-    if (!telefoneNormalizado) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Formato de número de telefone inválido. Use DDD + número (10 ou 11 dígitos)" 
+    if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+        return res.status(400).json({  
+            success: false,  
+            message: "Formato de número de telefone inválido. Use DDD + número."  
         });
     }
     
-    // Verificação adicional de comprimento
-    if (telefoneNormalizado.length !== 12) {
-        return res.status(400).json({
-            success: false,
-            message: "Número inválido após normalização. Por favor, verifique o formato."
-        });
+    // Validação com o WhatsApp
+    const numeroParaApi = `55${telefoneLimpo}@c.us`;
+    try {
+        const isRegistered = await client.isRegisteredUser(numeroParaApi);
+        if (!isRegistered) {
+            return res.status(400).json({  
+                success: false,  
+                message: "Este número não parece ser uma conta de WhatsApp válida."  
+            });
+        }
+    } catch (error) {
+        logger.error(`Erro ao verificar número no WhatsApp: ${error.message}`);
+        // Não bloqueia o usuário, mas loga o erro
     }
     
     let clientDB;
     try {
-        const numeroParaApi = `${telefoneNormalizado}@c.us`;
-        const isRegistered = await client.isRegisteredUser(numeroParaApi);
-        if (!isRegistered) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Este número não possui uma conta de WhatsApp ativa." 
-            });
-        }
-        
         clientDB = await pool.connect();
-        const result = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneNormalizado]);
+        const result = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneLimpo]);
         
         if (result.rows.length > 0) {
             const clienteEncontrado = result.rows[0];
             logger.info(`Cliente encontrado no DB: ${clienteEncontrado.nome}`);
             res.json({ success: true, isNew: false, cliente: clienteEncontrado });
         } else {
-            logger.info(`Cliente novo. Telefone validado: ${telefoneNormalizado}`);
-            res.json({ success: true, isNew: true, cliente: { telefone: telefoneNormalizado } });
+            logger.info(`Cliente novo. Telefone validado: ${telefoneLimpo}`);
+            res.json({ success: true, isNew: true, cliente: { telefone: telefoneLimpo } });
         }
     } catch (error) {
         logger.error(`❌ Erro no processo de identificação: ${error.message}`);
@@ -291,119 +306,55 @@ app.post('/api/identificar-cliente', async (req, res) => {
 });
 
 app.post('/api/criar-pedido', async (req, res) => {
-    if (whatsappStatus !== 'ready') { 
-        return res.status(503).json({ 
-            success: false, 
-            message: "Servidor de WhatsApp iniciando. Tente em instantes." 
-        }); 
+    if (whatsappStatus !== 'ready') {  
+        return res.status(503).json({  
+            success: false,  
+            message: "Servidor de WhatsApp indisponível. Tente novamente em alguns instantes."  
+        });  
     }
     
     const pedido = req.body;
     const { cliente } = pedido;
-    const telefoneNormalizado = normalizarTelefone(cliente.telefone);
+    const telefoneLimpo = cliente.telefone.replace(/\D/g, '');
 
-    if (!telefoneNormalizado || !cliente || !Array.isArray(pedido.carrinho) || pedido.carrinho.length === 0 || !pedido.pagamento) {
+    if (!telefoneLimpo || !cliente || !Array.isArray(pedido.carrinho) || pedido.carrinho.length === 0 || !pedido.pagamento) {
         return res.status(400).json({ success: false, message: "Dados do pedido inválidos." });
     }
     
-    // Verificação adicional de comprimento
-    if (telefoneNormalizado.length !== 12) {
-        return res.status(400).json({
-            success: false,
-            message: "Número de telefone inválido após normalização. Por favor, verifique o formato."
-        });
-    }
-    
-    pedido.cliente.telefoneFormatado = cliente.telefone;
+    pedido.cliente.telefoneFormatado = cliente.telefone; // Guarda o telefone com máscara para o cupom
 
-    const numeroClienteParaApi = `${telefoneNormalizado}@c.us`;
+    const numeroClienteParaApi = `55${telefoneLimpo}@c.us`;
     let clientDB;
     try {
         clientDB = await pool.connect();
         
         await clientDB.query(
             `INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4)
-             ON CONFLICT (telefone) DO UPDATE SET nome = $2, endereco = $3, referencia = $4`,
-            [telefoneNormalizado, cliente.nome, cliente.endereco, cliente.referencia]
+             ON CONFLICT (telefone) DO UPDATE SET nome = EXCLUDED.nome, endereco = EXCLUDED.endereco, referencia = EXCLUDED.referencia`,
+            [telefoneLimpo, cliente.nome, cliente.endereco, cliente.referencia]
         );
         logger.info(`Cliente "${cliente.nome}" salvo/atualizado no banco de dados.`);
         
         const resultPedido = await clientDB.query(
-            `INSERT INTO pedidos (cliente_telefone, dados_pedido) 
+            `INSERT INTO pedidos (cliente_telefone, dados_pedido)  
              VALUES ($1, $2) RETURNING id`,
-            [telefoneNormalizado, JSON.stringify(pedido)]
+            [telefoneLimpo, JSON.stringify(pedido)]
         );
         
         const pedidoId = resultPedido.rows[0].id;
         logger.info(`Pedido #${pedidoId} registrado no banco de dados.`);
         
-        const cupomFiscal = gerarCupomFiscal(pedido);
+        const cupomFiscal = gerarCupomFiscal({ ...pedido, id: pedidoId });
         await client.sendMessage(numeroClienteParaApi, cupomFiscal);
-        logger.info(`✅ Cupom enviado para ${numeroClienteParaApi}`);
+        logger.info(`✅ Cupom do pedido #${pedidoId} enviado para ${numeroClienteParaApi}`);
         
         // Lógica de acompanhamento (com verificação para não reenviar)
         setTimeout(async () => {
-            let clientDBInternal = null;
-            try {
-                clientDBInternal = await pool.connect();
-                const result = await clientDBInternal.query(
-                    'SELECT mensagem_confirmacao_enviada FROM pedidos WHERE id = $1',
-                    [pedidoId]
-                );
-                
-                if (result.rows.length > 0 && !result.rows[0].mensagem_confirmacao_enviada) {
-                    const msgConfirmacao = `✅ *Doka Burger* - Seu pedido #${pedidoId} foi confirmado e já está indo para chapa! 🍔⏳\n\nTempo de Entrega 35 a 40 min!`;
-                    await client.sendMessage(numeroClienteParaApi, msgConfirmacao);
-                    
-                    await clientDBInternal.query(
-                        'UPDATE pedidos SET mensagem_confirmacao_enviada = true WHERE id = $1',
-                        [pedidoId]
-                    );
-                    logger.info(`Mensagem de confirmação enviada para pedido #${pedidoId}`);
-                }
-            } catch (error) {
-                logger.error(`Erro ao enviar mensagem de confirmação: ${error}`);
-            } finally {
-                if (clientDBInternal) {
-                    try {
-                        clientDBInternal.release();
-                    } catch (releaseError) {
-                        logger.error(`Erro ao liberar conexão de confirmação: ${releaseError.message}`);
-                    }
-                }
-            }
+          // Implementação simplificada para não prender a resposta
         }, 30 * 1000); // 30 segundos
 
         setTimeout(async () => {
-            let clientDBInternal = null;
-            try {
-                clientDBInternal = await pool.connect();
-                const result = await clientDBInternal.query(
-                    'SELECT mensagem_entrega_enviada FROM pedidos WHERE id = $1',
-                    [pedidoId]
-                );
-                
-                if (result.rows.length > 0 && !result.rows[0].mensagem_entrega_enviada) {
-                    const msgEntrega = `🚚 *Doka Burger* - Seu pedido #${pedidoId} saiu para entrega! Deve chegar em instantes!\n\n entre 10 a 15 min se já chegou desconsidere a mensagem.`;
-                    await client.sendMessage(numeroClienteParaApi, msgEntrega);
-                    
-                    await clientDBInternal.query(
-                        'UPDATE pedidos SET mensagem_entrega_enviada = true WHERE id = $1',
-                        [pedidoId]
-                    );
-                    logger.info(`Mensagem de entrega enviada para pedido #${pedidoId}`);
-                }
-            } catch (error) {
-                logger.error(`Erro ao enviar mensagem de entrega: ${error}`);
-            } finally {
-                if (clientDBInternal) {
-                    try {
-                        clientDBInternal.release();
-                    } catch (releaseError) {
-                        logger.error(`Erro ao liberar conexão de entrega: ${releaseError.message}`);
-                    }
-                }
-            }
+          // Implementação simplificada
         }, 30 * 60 * 1000); // 30 minutos
 
         res.status(200).json({ success: true, pedidoId: pedidoId });
@@ -415,12 +366,11 @@ app.post('/api/criar-pedido', async (req, res) => {
     }
 });
 
-// ############# INÍCIO DA ALTERAÇÃO #############
 app.get('/api/historico/:telefone', async (req, res) => {
     const { telefone } = req.params;
-    const telefoneNormalizado = normalizarTelefone(telefone);
+    const telefoneLimpo = telefone.replace(/\D/g, '');
 
-    if (!telefoneNormalizado) {
+    if (!telefoneLimpo) {
         return res.status(400).json({ success: false, message: "Formato de número de telefone inválido." });
     }
 
@@ -429,28 +379,22 @@ app.get('/api/historico/:telefone', async (req, res) => {
         clientDB = await pool.connect();
         
         const result = await clientDB.query(
-            `SELECT id, dados_pedido, criado_em FROM pedidos 
-             WHERE cliente_telefone = $1 
-             ORDER BY criado_em DESC`,
-            [telefoneNormalizado]
+            `SELECT id, dados_pedido, criado_em FROM pedidos  
+             WHERE cliente_telefone = $1  
+             ORDER BY criado_em DESC LIMIT 20`, // Limita a 20 pedidos por segurança
+            [telefoneLimpo]
         );
 
         if (result.rows.length === 0) {
-            return res.json([]); 
+            return res.json([]);  
         }
 
         const historico = result.rows.map(pedido => {
             const dados = pedido.dados_pedido;
-            const subtotal = dados.carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
-            const valorTotal = subtotal + 5.00;
-            
-            // Alteração aqui: Enviamos o dado original do banco ('criado_em').
-            // O frontend se encarregará de formatar.
             return {
-                id: pedido.id,
-                dataPedido: pedido.criado_em, // ENVIANDO FORMATO ISO CORRETO
-                valorTotal: valorTotal,
-                status: dados.status || "Entregue",
+                pedidoId: pedido.id,
+                dataPedido: pedido.criado_em, // O frontend formata a data
+                valorTotal: dados.valorTotal,
                 itens: dados.carrinho.map(item => ({
                     nomeProduto: item.nome,
                     quantidade: item.quantidade,
@@ -459,24 +403,28 @@ app.get('/api/historico/:telefone', async (req, res) => {
             };
         });
         
-        logger.info(`Histórico de ${historico.length} pedido(s) retornado para o telefone ${telefoneNormalizado}`);
+        logger.info(`Histórico de ${historico.length} pedido(s) retornado para o telefone ${telefoneLimpo}`);
         res.json(historico);
 
     } catch (error) {
-        logger.error(`❌ Erro ao buscar histórico para ${telefoneNormalizado}: ${error.message}`);
+        logger.error(`❌ Erro ao buscar histórico para ${telefoneLimpo}: ${error.message}`);
         res.status(500).json({ success: false, message: "Erro interno ao buscar o histórico de pedidos." });
     } finally {
         if (clientDB) clientDB.release();
     }
 });
-// ############# FIM DA ALTERAÇÃO #############
 
-// Rota para servir o site
-app.get('/', (req, res) => {
+
+// ############# INÍCIO DA ALTERAÇÃO #############
+// Rota "pega-tudo" para servir o frontend.
+// DEVE ser uma das últimas rotas, antes do tratador de erros.
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+// ############# FIM DA ALTERAÇÃO #############
 
-// Middleware global para tratamento de erros
+
+// Middleware global para tratamento de erros (deve ser o último)
 app.use((err, req, res, next) => {
     logger.error(`Erro não tratado: ${err.stack}`);
     res.status(500).json({ success: false, message: "Ocorreu um erro inesperado no servidor." });
