@@ -6,7 +6,7 @@ const { Client } = require('whatsapp-web.js');
 const fs = require('fs');
 const cors = require('cors');
 const { Pool } = require('pg');
-const rateLimit = require('express-rate-limite');
+const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 
 // Função para obter data/hora atual em Brasília (UTC-3)
