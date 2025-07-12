@@ -1,437 +1,1132 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const path = require('path');
-const qrcode = require('qrcode-terminal');
-const { Client } = require('whatsapp-web.js');
-const fs = require('fs');
-const cors = require('cors');
-const { Pool } = require('pg');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doka Burger | Delivery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --laranja: #FF6B00;
+            --marrom: #2E1A0F;
+            --branco: #FFFFFF;
+            --cinza: #F5F5F5;
+            --verde: #25D366;
+            --keeta-dark: var(--marrom);
+            --keeta-light-gray: var(--cinza);
+            --verde-confirmacao: #25D366;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--keeta-light-gray);
+            color: var(--keeta-dark);
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        .view { display: none; }
+        .view.active { display: block; }
+        .btn-primary {
+            background-color: var(--laranja);
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover { background-color: #e65c00; }
+        .btn-primary:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+        .nav-link-active {
+            color: var(--laranja) !important;
+            border-bottom: 2px solid var(--laranja);
+        }
+        .category-btn-active {
+            background-color: var(--laranja) !important;
+            color: white !important;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .message-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .message-modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 350px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-confirm {
+            background-color: var(--verde-confirmacao) !important;
+            transition: background-color 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(20px) translateX(-50%); opacity: 0; }
+            to { transform: translateY(0) translateX(-50%); opacity: 1; }
+        }
+        .confirmation-message {
+            position: fixed;
+            bottom: 100px; left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--verde-confirmacao);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1100;
+            animation: slideIn 0.3s ease forwards;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        @media (max-width: 1024px) {
+            .confirmation-message {
+                bottom: 80px; width: 90%; text-align: center; justify-content: center;
+            }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        laranja: '#FF6B00',
+                        marrom: '#2E1A0F',
+                        cinza: '#F5F5F5',
+                        verde: '#25D366',
+                        'keeta-dark': '#2E1A0F',
+                        'keeta-light-gray': '#F5F5F5',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased">
 
-// Função para obter data/hora atual em Brasília (UTC-3)
-function getBrasiliaTime() {
-    const now = new Date();
-    // Ajusta para UTC-3 (Brasília)
-    now.setHours(now.getHours() - 3);
-    return now;
-}
+    <div id="custom-message-modal" class="message-modal">
+        <div class="message-modal-content">
+            <p id="custom-message-text" class="text-lg font-semibold mb-4"></p>
+            <button id="custom-message-close-btn" class="btn-primary py-2 px-6 rounded-lg">OK</button>
+        </div>
+    </div>
 
-// Configuração de logs com horário de Brasília
-const logger = {
-  info: (msg) => {
-      const now = getBrasiliaTime();
-      console.log(`[INFO] ${now.toISOString()} - ${msg}`);
-  },
-  error: (msg) => {
-      const now = getBrasiliaTime();
-      console.error(`[ERROR] ${now.toISOString()} - ${msg}`);
-  }
-};
+    <div id="product-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-xl">
+            <div class="p-5 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">Detalhes do produto</h2>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-gray-800"><i data-lucide="x"></i></button>
+            </div>
+            <div id="modal-content" class="overflow-y-auto"></div>
+            <div id="modal-footer" class="p-4 bg-gray-50 border-t mt-auto flex items-center justify-between gap-4"></div>
+        </div>
+    </div>
 
-// Configuração do Express
-const app = express();
-const PORT = process.env.PORT || 3000;
+    <div id="identification-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-8 shadow-xl">
+            <h2 id="ident-modal-title" class="text-2xl font-bold text-center mb-2">Bem-vindo!</h2>
+            <p id="ident-modal-subtitle" class="text-gray-600 mb-6 text-center">Informe seu WhatsApp para continuar.</p>
+            <form id="ident-form">
+                <input type="tel" id="ident-phone-input" placeholder="(XX) XXXXX-XXXX" class="w-full border-gray-300 border rounded-lg p-3 text-center text-lg mb-4 focus:ring-2 focus:ring-laranja" />
+                <p id="ident-error" class="text-red-500 text-sm mb-4 hidden text-center"></p>
+                <div class="flex flex-col gap-3">
+                    <button type="submit" id="ident-submit-btn" class="w-full btn-primary font-bold px-6 py-3 rounded-lg">Continuar</button>
+                    <button type="button" id="ident-cancel-btn" class="w-full text-gray-600 font-semibold px-4 py-2 rounded-lg hover:bg-gray-100">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-// Informa ao Express para confiar no proxy do Render (ou outro serviço de hospedagem)
-app.set('trust proxy', 1);
+    <div id="edit-order-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-xl">
+            <div class="p-5 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">Editar Pedido e Endereço</h2>
+                <button id="edit-modal-close-btn" class="text-gray-400 hover:text-gray-800"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-6">
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">Itens na Sacola</h3>
+                    <div id="edit-modal-cart-items" class="space-y-3">
+                        </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">Endereço de Entrega</h3>
+                    <form id="edit-address-form" class="space-y-3">
+                        <input type="text" name="endereco" placeholder="Seu endereço (Rua, Número, Bairro)" class="w-full border-gray-300 border rounded-lg p-3 focus:ring-2 focus:ring-laranja" required />
+                        <input type="text" name="referencia" placeholder="Ponto de referência (opcional)" class="w-full border-gray-300 border rounded-lg p-3 focus:ring-2 focus:ring-laranja" />
+                    </form>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t mt-auto">
+                <button id="edit-modal-save-btn" class="w-full btn-primary font-bold py-3 rounded-lg">
+                    Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
 
-// --- Middlewares de Segurança e Funcionalidade ---
-app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'", 
-        "'unsafe-inline'", // Necessário para scripts no HTML
-        "https://cdn.tailwindcss.com",
-        "https://unpkg.com" 
-      ],  
-      styleSrc: [
-        "'self'", 
-        "'unsafe-inline'", // Necessário para estilos no HTML
-        "https://fonts.googleapis.com"
-      ],
-      imgSrc: [
-        "'self'", 
-        "data:", 
-        "https://engevealbani.github.io", // Corrigido
-        "https://placehold.co"
-      ],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: [],
-    },
-  })
-);
+    <header class="bg-white sticky top-0 z-40 border-b border-gray-100">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center gap-3">
+                    <div class="font-bold text-2xl flex items-center justify-center">
+                        <i data-lucide="hamburger" class="w-7 h-7 mr-2" style="color: var(--laranja);"></i>
+                        Doka<span style="color: var(--laranja);">Burger</span>
+                    </div>
+                </div>
+                <nav class="hidden lg:flex items-center gap-8 font-semibold h-full">
+                    <button data-view="menu" class="nav-link text-gray-800 h-full flex items-center">Cardápio</button>
+                    <button onclick="showMessageModal('Página de promoções em breve!')" class="text-gray-500 hover:text-gray-800 h-full flex items-center">Promoções</button>
+                    <button id="history-btn-desktop" class="nav-link text-gray-500 hover:text-gray-800 h-full flex items-center">Meus Pedidos</button>
+                </nav>
+                <div class="flex items-center gap-4">
+                    <button id="login-register-btn" class="btn-primary font-semibold py-2 px-5 rounded-full text-sm">Entrar</button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-app.disable('x-powered-by');  
-app.use(cors());
-app.use(bodyParser.json());
+    <div class="container mx-auto px-4">
+        <div class="lg:grid lg:grid-cols-12 lg:gap-8">
+            
+            <aside class="hidden lg:block lg:col-span-3 py-8 sticky top-[80px] self-start">
+                <nav class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="font-bold text-lg mb-4 px-3">Categorias</h3>
+                    <ul id="desktop-category-list" class="space-y-1"></ul>
+                </nav>
+            </aside>
 
-// ############# INÍCIO DA ALTERAÇÃO #############
-// Serve os arquivos estáticos (HTML, CSS, JS do cliente) da pasta 'public'
-app.use(express.static(path.join(__dirname, 'public')));
-// ############# FIM DA ALTERAÇÃO #############
+            <main class="lg:col-span-9 xl:col-span-6 pb-24">
+                <div id="mobile-info-header" class="lg:hidden mt-6 bg-white border border-gray-100 shadow-sm rounded-2xl p-4 flex gap-4 items-center">
+                    <div class="font-bold text-xl flex items-center justify-center">
+                        <i data-lucide="hamburger" class="w-16 h-16 mr-2 object-contain bg-gray-100 rounded-lg p-2" style="color: var(--laranja);"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">Doka Burger</h1>
+                        <div id="status-loja-mobile" class="flex items-center gap-2 text-sm font-semibold mt-1"></div>
+                    </div>
+                </div>
 
+                <div id="desktop-info-header" class="hidden lg:block py-8">
+                    <h1 class="text-4xl font-bold">Cardápio Doka Burger</h1>
+                    <div id="status-loja-desktop" class="flex items-center gap-2 text-md font-semibold mt-2"></div>
+                </div>
+                
+                <div id="mobile-category-nav" class="lg:hidden sticky top-[80px] bg-opacity-80 backdrop-blur-md bg-white/80 z-30 py-3 -mx-4 px-4 border-b border-gray-100">
+                    <div id="mobile-category-list" class="overflow-x-auto whitespace-nowrap no-scrollbar"></div>
+                </div>
+                
+                <div id="menu-view" class="view active pt-6">
+                    <div class="relative mb-6">
+                        <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                        <input id="search-input" type="text" placeholder="Qual delícia você procura hoje?" class="w-full bg-white border border-gray-200 rounded-full py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-laranja"/>
+                    </div>
+                    <div id="menu-container"></div>
+                </div>
 
-// Configuração do Rate Limiter para as rotas da API
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, message: "Muitas requisições. Por favor, tente novamente mais tarde." }
-});
+                <div id="registration-view" class="view pt-6">
+                    <div class="p-4 md:p-6 bg-white rounded-xl shadow-sm border-gray-100">
+                        <button id="reg-back-btn" class="flex items-center gap-2 text-gray-600 font-semibold mb-6"><i data-lucide="arrow-left" class="w-5 h-5"></i> Voltar</button>
+                        <h2 class="text-2xl font-bold mb-2">Quase lá!</h2>
+                        <p class="text-gray-600 mb-6">Como este é seu primeiro acesso, precisamos de algumas informações para a entrega.</p>
+                        <form id="registration-form" class="space-y-4">
+                            <input type="text" name="nome" placeholder="Seu nome completo" class="w-full border-gray-300 border rounded-lg p-3 focus:ring-2 focus:ring-laranja" required />
+                            <input type="text" name="endereco" placeholder="Seu endereço (Rua, Número, Bairro)" class="w-full border-gray-300 border rounded-lg p-3 focus:ring-2 focus:ring-laranja" required />
+                            <input type="text" name="referencia" placeholder="Ponto de referência (opcional)" class="w-full border-gray-300 border rounded-lg p-3 focus:ring-2 focus:ring-laranja" />
+                            <button type="submit" class="w-full btn-primary font-bold py-3 rounded-lg">Salvar e Continuar</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="checkout-view" class="view pt-6">
+                    <div class="p-4 md:p-6 pb-24 lg:pb-6 bg-white rounded-xl shadow-sm border-gray-100">
+                        <button id="checkout-back-btn" class="flex items-center gap-2 text-gray-600 font-semibold mb-6"><i data-lucide="arrow-left" class="w-5 h-5"></i> Voltar ao Cardápio</button>
+                        <h2 class="text-3xl font-bold mb-6">Finalizar Pedido</h2>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg mb-6 border">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-semibold text-lg">Detalhes da Entrega</h3>
+                                <button id="edit-order-btn" class="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-laranja">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                    Editar Pedido
+                                </button>
+                            </div>
+                            <p id="checkout-cliente-nome" class="font-bold"></p>
+                            <p id="checkout-cliente-endereco"></p>
+                            <p id="checkout-cliente-referencia" class="text-sm text-gray-500"></p>
+                        </div>
 
-app.use('/api/', apiLimiter);
+                        <div class="mb-6">
+                            <h3 class="font-semibold text-lg mb-2">Resumo do Pedido</h3>
+                            <div id="checkout-cart-summary" class="space-y-2"></div>
+                            <div class="flex justify-between font-semibold mt-3 pt-3 border-t">
+                                <span>Subtotal</span>
+                                <span id="checkout-subtotal"></span>
+                            </div>
+                            <div class="flex justify-between text-gray-600 text-sm">
+                                <span>Taxa de Entrega</span>
+                                <span id="checkout-taxa"></span>
+                            </div>
+                            <div class="flex justify-between font-bold text-xl mt-3 pt-3 border-t">
+                                <span>Total a pagar</span>
+                                <span id="checkout-total"></span>
+                            </div>
+                        </div>
 
+                        <div class="mb-6">
+                            <h3 class="font-semibold text-lg mb-2">Forma de Pagamento</h3>
+                            <select id="payment-method" class="w-full border-gray-300 border rounded-lg p-3 focus:ring-2 focus:ring-laranja">
+                                <option>Cartão de Crédito</option>
+                                <option>Cartão de Débito</option>
+                                <option>Dinheiro</option>
+                                <option>Pix</option>
+                            </select>
+                            <input type="number" id="troco-input" placeholder="Precisa de troco para quanto?" class="w-full border-gray-300 border rounded-lg p-3 mt-2 hidden focus:ring-2 focus:ring-laranja" />
+                            <p id="troco-calculado-text" class="text-sm text-gray-600 mt-1 hidden">Troco: <span id="valor-troco-texto" class="font-bold"></span></p>
+                        </div>
 
-// --- Conexão com o Banco de Dados PostgreSQL ---
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  connectionTimeoutMillis: 5000
-});
+                        <button id="place-order-btn" class="w-full btn-primary font-bold py-4 rounded-lg text-lg">
+                           Finalizar Pedido
+                        </button>
+                    </div>
+                </div>
 
-// --- Função para criar as tabelas se não existirem ---
-async function setupDatabase() {
-    let clientDB;
-    try {
-        clientDB = await pool.connect();
-        
-        // Tabela de clientes
-        await clientDB.query(`
-            CREATE TABLE IF NOT EXISTS clientes (
-                telefone VARCHAR(20) PRIMARY KEY,
-                nome VARCHAR(255) NOT NULL,
-                endereco TEXT NOT NULL,
-                referencia TEXT,
-                criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        
-        // Tabela de pedidos
-        await clientDB.query(`
-            CREATE TABLE IF NOT EXISTS pedidos (
-                id SERIAL PRIMARY KEY,
-                cliente_telefone VARCHAR(20) NOT NULL REFERENCES clientes(telefone),
-                dados_pedido JSONB NOT NULL,
-                mensagem_confirmacao_enviada BOOLEAN NOT NULL DEFAULT false,
-                mensagem_entrega_enviada BOOLEAN NOT NULL DEFAULT false,
-                criado_em TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        
-        logger.info('Tabelas verificadas/criadas com sucesso no banco de dados.');
-    } catch (err) {
-        logger.error(`Erro ao criar as tabelas: ${err}`);
-    } finally {
-        if (clientDB) clientDB.release();
-    }
-}
+                <div id="history-view" class="view pt-6">
+                    <div class="p-4 md:p-6 pb-24 lg:pb-6 bg-white rounded-xl shadow-sm border-gray-100">
+                        <button id="history-back-btn" class="flex items-center gap-2 text-gray-600 font-semibold mb-6"><i data-lucide="arrow-left" class="w-5 h-5"></i> Voltar</button>
+                        <h2 class="text-3xl font-bold mb-6">Meus Pedidos</h2>
+                        <div id="history-container"></div>
+                    </div>
+                </div>
 
-// --- Estado e Inicialização do Cliente WhatsApp ---
-let whatsappStatus = 'initializing';
+                <div id="success-view" class="view pt-6">
+                    <div class="p-4 md:p-8 text-center bg-white rounded-xl shadow-sm border-gray-100">
+                        <div class="w-20 h-20 bg-laranja-100 rounded-full mx-auto flex items-center justify-center mb-4" style="background-color: rgba(255, 107, 0, 0.1);">
+                            <i data-lucide="check" class="w-12 h-12" style="color: var(--laranja);"></i>
+                        </div>
+                        <h1 class="text-3xl font-bold mb-4" style="color: var(--laranja);">Pedido Enviado!</h1>
+                        <p class="text-lg text-gray-700 mb-6">Obrigado pela preferência! Seu pedido foi recebido e já está sendo preparado.</p>
+                        <div id="success-receipt" class="bg-gray-50 p-4 rounded-lg border text-left font-mono text-sm max-w-md mx-auto whitespace-pre-wrap"></div>
+                        <button id="success-back-btn" class="mt-8 btn-primary font-bold py-3 px-8 rounded-lg">Voltar ao Cardápio</button>
+                    </div>
+                </div>
+            </main>
 
-const client = new Client({
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    headless: true
-  },
-  // Lógica para carregar a sessão se ela existir
-  // session: fs.existsSync('./session.json') ? JSON.parse(fs.readFileSync('./session.json', 'utf-8')) : null
-});
-
-// --- Função de Normalização de Telefone Atualizada ---
-function normalizarTelefone(telefone) {
-  if (typeof telefone !== 'string') return null;
-  
-  // Remove tudo que não for dígito
-  let limpo = telefone.replace(/\D/g, '');
-  
-  // Remove o prefixo '55' se já existir para evitar duplicação
-  if (limpo.startsWith('55')) {
-    limpo = limpo.substring(2);
-  }
+            <aside class="hidden xl:block xl:col-span-3 py-8 sticky top-[80px] self-start">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div id="desktop-cart-container"></div>
+                    <button id="desktop-checkout-btn" class="w-full btn-primary font-bold py-3 mt-4 rounded-lg disabled:bg-gray-300">
+                        Finalizar Pedido
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </div>
     
-  // Verifica comprimento após limpeza
-  if (limpo.length >= 10 && limpo.length <= 11) {
-    // Formato final é sempre 55 + DDD + Numero (sem o 9)
-    const ddd = limpo.substring(0, 2);
-    let numero = limpo.substring(2);
-    
-    // Remove o nono dígito se ele existir (para números de celular antigos)
-    if (numero.length === 9 && numero.startsWith('9')) {
-      numero = numero.substring(1);
-    }
-    
-    return `55${ddd}${numero}`;
-  }
-  
-  return null;
-}
+    <div id="mobile-cart-flyout" class="lg:hidden hidden fixed bottom-20 right-4 z-40">
+        <button id="mobile-checkout-flyout-btn" class="btn-primary font-semibold py-2 px-3 text-sm rounded-full shadow-lg flex items-center gap-3">
+            <span>Total</span>
+            <span id="mobile-flyout-total" class="font-bold"></span>
+        </button>
+    </div>
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t z-40">
+        <div class="flex justify-around items-center h-16">
+            <button data-view="menu" class="nav-link flex flex-col items-center justify-center w-full text-gray-500 pt-2 pb-1">
+                <i data-lucide="home"></i><span class="text-xs mt-1">Início</span>
+            </button>
+            <button id="history-btn-mobile" class="nav-link flex flex-col items-center justify-center w-full text-gray-500 pt-2 pb-1">
+                <i data-lucide="history"></i><span class="text-xs mt-1">Pedidos</span>
+            </button>
+            <div class="relative">
+                <button id="mobile-cart-btn" class="flex flex-col items-center justify-center w-full text-gray-500 hover:text-laranja pt-2 pb-1">
+                    <i data-lucide="shopping-bag"></i><span class="text-xs mt-1">Sacola</span>
+                </button>
+                <span id="mobile-cart-badge" class="hidden absolute top-0 right-0 bg-laranja text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white">0</span>
+            </div>
+        </div>
+    </nav>
 
-function gerarCupomFiscal(pedido) {
-    const { cliente, carrinho, pagamento, troco } = pedido;
-    const subtotal = carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
-    const taxaEntrega = 5.00;
-    const total = subtotal + taxaEntrega;
-    const now = getBrasiliaTime();
-    
-    // Formata a data manualmente
-    const dataFormatada = now.toLocaleDateString('pt-BR');
-    const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    
-    let cupom = `================================\n`;
-    cupom += `Doka Burger - ${dataFormatada} ${horaFormatada}\n`;
-    cupom += `================================\n`
-    cupom += `👤 *CLIENTE*\nNome: ${cliente.nome}\nFone: ${cliente.telefoneFormatado}\n\n`;
-    cupom += `*ITENS DO PEDIDO:*\n`;
-    carrinho.forEach(item => {
-        const totalItem = `R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}`;
-        cupom += `• ${item.quantidade}x ${item.nome} - ${totalItem}\n`;
-        if (item.observacao) { cupom += `  Obs: ${item.observacao}\n`; }
-    });
-    cupom += `--------------------------------\n`;
-    cupom += `Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
-    cupom += `Taxa Entrega: R$ ${taxaEntrega.toFixed(2).replace('.', ',')}\n`;
-    cupom += `*TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*\n`;
-    cupom += `--------------------------------\n`;
-    cupom += `*ENDEREÇO DE ENTREGA:*\n${cliente.endereco}\n`;
-    if (cliente.referencia) { cupom += `Ref: ${cliente.referencia}\n`; }
-    cupom += `--------------------------------\n`;
-    cupom += `*PAGAMENTO:*\n${pagamento}\n`;
-    if (pagamento === 'Dinheiro' && troco) {
-        const valorTroco = parseFloat(troco.replace(',', '.')) - total;
-        cupom += `Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')} (Levar R$ ${valorTroco.toFixed(2).replace('.',',')})\n`;
-    }
-    cupom += `================================\n`;
-    cupom += `Obrigado pela preferência!`;
-    return cupom;
-}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Aplicação inicializada.");
 
-// --- Eventos do WhatsApp ---
-client.on('qr', qr => {
-    logger.info('Gerando QR Code...');
-    qrcode.generate(qr, { small: true });
-    logger.info(`\nSe o QR Code não aparecer, acesse este link no navegador:\nhttps://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}\n`);
-});
+            // ===================================================================
+            // DADOS E CONFIGURAÇÕES GLOBAIS
+            // ===================================================================
+            
+            const cardapioDB_flat = [
+                { id: 'p1', nome: 'Duplo carne saladão 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, alface, tomate, picles, cebola e molho artesanal.', imagem: 'https://engevealbani.github.io/yesfotos/foto/duplo-carne-saladao.png', categoria: 'Hambúrgueres de 180g' },
+                { id: 'p2', nome: 'Doka Cheddar Bacon 180g', preco: 39.99, descricao: 'Hambúrguer 180g, pão brioche, cheddar, bacon crocante e molho artesanal.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-cheddar-bacon-180g.png', categoria: 'Hambúrgueres de 180g' },
+                { id: 'p3', nome: 'Doka Duty', preco: 49.90, preco_antigo: 55.00, descricao: 'Hambúrgueres 180g, bacon em dobro, queijo prato, cebola caramelizada em dobro, alface/rúcula, tomate e molho.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-duty.avif', categoria: 'Hambúrgueres de 180g' },
+                { id: 'p4', nome: 'Brie', preco: 49.90, descricao: 'Pão de brioche selado na manteiga, hambúrguer artesanal de 180g, bacon, cheddar, alface, tomate, queijo brie de 140g empanado e frito e molho.', imagem: 'https://engevealbani.github.io/yesfotos/foto/brie.avif', categoria: 'Hambúrgueres de 180g' },
+                { id: 'p5', nome: 'Doka Burguer 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato e molho artesanal.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-burguer-180g.avif', categoria: 'Hambúrgueres de 180g' },
+                { id: 'p6', nome: 'Bell Cheese Egg Bacon 180g', preco: 39.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, bacon e molho artesanal.', imagem: 'https://engevealbani.github.io/yesfotos/foto/bell-cheese-egg-bacon.avif', categoria: 'Hambúrgueres de 180g' },
+                { id: 'p7', nome: 'Doka Salada 180g', preco: 36.90, descricao: 'Hambúrguer 180g, pão brioche, queijo prato, alface ou rúcula, tomate e molho artesanal.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-salada.png', categoria: 'Hambúrgueres de 180g' },
+                { id: 'p8', nome: 'Rei Brie Completão', preco: 49.90, descricao: 'Pão de brioche selado na manteiga, hambúrguer artesanal de 180g, bacon, cheddar, alface, tomate, queijo brie de 140g empanado e frito e molho.', imagem: 'https://engevealbani.github.io/yesfotos/foto/famoso-rei-brie.avif', categoria: 'Hambúrgueres de 180g' },
+                { id: 's1', nome: 'Big Doka', preco: 42.90, preco_antigo: 45.00, descricao: '2x Hambúrgueres 120g, alface, queijo, molho especial, cebola, picles, pão com gergelim.', imagem: 'https://engevealbani.github.io/yesfotos/foto/big-doka.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's2', nome: 'Doka King 120g', preco: 30.00, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, mix de saladas e molho da casa.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-king.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's3', nome: 'Doka Churrasco 120g', preco: 33.90, descricao: 'Hambúrguer grelhado 120g, pão brioche, queijo prato, mix de saladas e maionese defumada da casa.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-churrasco.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's4', nome: 'Doka Cheddar Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-cheddar-bacon.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's5', nome: 'Cheese Burguer Doka 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato e molho da casa.', imagem: 'https://engevealbani.github.io/yesfotos/foto/cheese-burguer-doka.jpg', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's6', nome: 'Cheese Pepper 120g', preco: 32.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, geleia de pimenta, molho da casa.', imagem: 'https://engevealbani.github.io/yesfotos/foto/bell-cheese-pepper.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's7', nome: 'Smash Cheese Bacon 120g', preco: 34.90, descricao: 'Hambúrguer 120g, pão brioche, queijo prato, bacon e molho da casa.', imagem: 'https://engevealbani.github.io/yesfotos/foto/smash-cheese-bacon.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's8', nome: 'Triplo Cheesesalada', preco: 32.90, descricao: 'Pão, 3 smash\'s 70g, 3 queijos cheddar, alface, molho especial, picles e cebola.', imagem: 'https://engevealbani.github.io/yesfotos/foto/triplo-cheesesalada.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's9', nome: 'Mister-Salada', preco: 32.90, descricao: 'Hambúrguer 120g, pão, queijo prato, alface, tomate, e cebola, molho especial.', imagem: 'https://engevealbani.github.io/yesfotos/foto/mister-salada.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 's10', nome: 'Doka Triplo Cheesebacon', preco: 29.90, descricao: 'Pão, 3 smash\'s 70g, 3 queijos cheddar, bacon, ketchup e mostarda.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-triplo-cheesebacon.avif', categoria: 'Hambúrgueres de 120g e Smashs' },
+                { id: 'f1', nome: 'Doka Kids Chicken', preco: 29.90, descricao: 'Pão de gergelim, frango empanado, maionese, tomate e alface picado.', imagem: 'https://engevealbani.github.io/yesfotos/foto/doka-kids-chicken.avif', categoria: 'Frango' },
+                { id: 'f2', nome: 'Raw Chicken Bacon', preco: 31.90, descricao: 'Hambúrguer 120g frango empanado, bacon, Pão, maionese, tomate e alface picado.', imagem: 'https://engevealbani.github.io/yesfotos/foto/raw-chiken-bacon.jpeg', categoria: 'Frango' },
+                { id: 'f3', nome: 'Frango Empanado Especial', preco: 35.90, descricao: 'Pão de brioche, frango empanado, bacon, queijo prato, maionese, tomate e alface picado.', imagem: 'https://engevealbani.github.io/yesfotos/foto/raw-chiken-bacon-especial....jpeg', categoria: 'Frango' },
+                { id: 'c1', nome: 'Combo Dokinha 01', preco: 44.90, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, molho especial + Fritas + Refri 350ml.', imagem: 'https://engevealbani.github.io/yesfotos/foto/combo-dokinha01.avif', categoria: 'Combos' },
+                { id: 'c2', nome: 'Combo Dokinha Salada', preco: 48.60, descricao: 'Pão brioche, Hambúrguer 150g, cheddar, cebola roxa, picles, alface, tomate, maionese + Fritas + Refri 350ml.', imagem: 'https://engevealbani.github.io/yesfotos/foto/combo-dokinha-salada.avif', categoria: 'Combos' },
+                { id: 'c3', nome: 'Combo Catubacon', preco: 54.99, descricao: 'Pão brioche, Hambúrguer 150g, Catupiry, bacon crocante, molho especial + Fritas + Refri 350ml.', imagem: 'https://engevealbani.github.io/yesfotos/foto/combo-catubacon.jpg', categoria: 'Combos' },
+                { id: 'c4', nome: 'Combo Doka Casal Fit', preco: 69.99, descricao: '2x burguers clássicos (150g cada) + 2x Porções de batata (aprox. 100g cada) + 2x refri lata.', imagem: 'https://engevealbani.github.io/yesfotos/foto/combo-doka-casal-fit.avif', categoria: 'Combos' },
+                { id: 'b1', nome: 'Coca-Cola 1L', preco: 12.00, descricao: 'Garrafa 1L', imagem: 'https://engevealbani.github.io/yesfotos/foto/coca-cola-1litros.avif', categoria: 'Bebidas' },
+                { id: 'b2', nome: 'Coca-Cola Original', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engevealbani.github.io/yesfotos/foto/coca-lata350ml.avif', categoria: 'Bebidas' },
+                { id: 'b3', nome: 'Guaraná Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engevealbani.github.io/yesfotos/foto/refrigerante-guarana-fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+                { id: 'b4', nome: 'Fanta Laranja', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engevealbani.github.io/yesfotos/foto/fanta-laranja-350ml.avif', categoria: 'Bebidas' },
+                { id: 'b5', nome: 'Fanta Uva', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engevealbani.github.io/yesfotos/foto/refrigerante-uva-fanta-350ml.avif', categoria: 'Bebidas' },
+                { id: 'b6', nome: 'Sprite Limão Zero', preco: 7.50, descricao: 'Lata 350ml', imagem: 'https://engevealbani.github.io/yesfotos/foto/sprite-lima-zero-350ml.avif', categoria: 'Bebidas' },
+                { id: 'b7', nome: 'Schweppes Citrus', preco: 8.00, descricao: 'Lata 350ml', imagem: 'https://engevealbani.github.io/yesfotos/foto/refrigerante-schweppes-citrus-350ml.avif', categoria: 'Bebidas' },
+                { id: 'b8', nome: 'Chá Ice Tea Limão', preco: 9.00, descricao: 'Garrafa 450ml', imagem: 'https://engevealbani.github.io/yesfotos/foto/cha-ice-tea-leao-limao-450ml.avif', categoria: 'Bebidas' }
+            ];
 
-client.on('authenticated', (session) => {
-    logger.info('Sessão autenticada! Salvando...');
-    // A biblioteca gerencia a sessão, não precisamos salvar manualmente
-});
-
-client.on('auth_failure', msg => {
-    logger.error(`FALHA NA AUTENTICAÇÃO: ${msg}.`);
-    whatsappStatus = 'disconnected';
-});
-
-client.on('ready', () => {  
-    whatsappStatus = 'ready';
-    logger.info('✅ 🤖 Cliente WhatsApp conectado e pronto para automação!');
-});
-
-client.on('disconnected', (reason) => {  
-    whatsappStatus = 'disconnected';  
-    logger.error(`WhatsApp desconectado: ${reason}`);  
-});
-
-client.initialize().catch(err => {
-  logger.error(`Falha crítica ao inicializar o cliente: ${err}`);
-});
-
-
-// --- Rotas da API ---
-
-app.get('/health', (req, res) => {
-    res.json({
-        whatsapp: whatsappStatus,
-        database_connections: pool.totalCount,
-        uptime_seconds: process.uptime()
-    });
-});
-
-app.post('/api/identificar-cliente', async (req, res) => {
-    const { telefone } = req.body;
-    // O frontend já manda o telefone limpo, mas normalizamos por segurança
-    const telefoneLimpo = telefone.replace(/\D/g, '');
-
-    if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
-        return res.status(400).json({  
-            success: false,  
-            message: "Formato de número de telefone inválido. Use DDD + número."  
-        });
-    }
-    
-    // Validação com o WhatsApp
-    const numeroParaApi = `55${telefoneLimpo}@c.us`;
-    try {
-        const isRegistered = await client.isRegisteredUser(numeroParaApi);
-        if (!isRegistered) {
-            return res.status(400).json({  
-                success: false,  
-                message: "Este número não parece ser uma conta de WhatsApp válida."  
+            const menuData = {};
+            cardapioDB_flat.forEach(product => {
+                if (!menuData[product.categoria]) menuData[product.categoria] = [];
+                menuData[product.categoria].push(product);
             });
-        }
-    } catch (error) {
-        logger.error(`Erro ao verificar número no WhatsApp: ${error.message}`);
-        // Não bloqueia o usuário, mas loga o erro
-    }
-    
-    let clientDB;
-    try {
-        clientDB = await pool.connect();
-        const result = await clientDB.query('SELECT * FROM clientes WHERE telefone = $1', [telefoneLimpo]);
-        
-        if (result.rows.length > 0) {
-            const clienteEncontrado = result.rows[0];
-            logger.info(`Cliente encontrado no DB: ${clienteEncontrado.nome}`);
-            res.json({ success: true, isNew: false, cliente: clienteEncontrado });
-        } else {
-            logger.info(`Cliente novo. Telefone validado: ${telefoneLimpo}`);
-            res.json({ success: true, isNew: true, cliente: { telefone: telefoneLimpo } });
-        }
-    } catch (error) {
-        logger.error(`❌ Erro no processo de identificação: ${error.message}`);
-        res.status(500).json({ success: false, message: "Erro interno no servidor." });
-    } finally {
-        if (clientDB) clientDB.release();
-    }
-});
 
-app.post('/api/criar-pedido', async (req, res) => {
-    if (whatsappStatus !== 'ready') {  
-        return res.status(503).json({  
-            success: false,  
-            message: "Servidor de WhatsApp indisponível. Tente novamente em alguns instantes."  
-        });  
-    }
-    
-    const pedido = req.body;
-    const { cliente } = pedido;
-    const telefoneLimpo = cliente.telefone.replace(/\D/g, '');
-
-    if (!telefoneLimpo || !cliente || !Array.isArray(pedido.carrinho) || pedido.carrinho.length === 0 || !pedido.pagamento) {
-        return res.status(400).json({ success: false, message: "Dados do pedido inválidos." });
-    }
-    
-    pedido.cliente.telefoneFormatado = cliente.telefone; // Guarda o telefone com máscara para o cupom
-
-    const numeroClienteParaApi = `55${telefoneLimpo}@c.us`;
-    let clientDB;
-    try {
-        clientDB = await pool.connect();
-        
-        await clientDB.query(
-            `INSERT INTO clientes (telefone, nome, endereco, referencia) VALUES ($1, $2, $3, $4)
-             ON CONFLICT (telefone) DO UPDATE SET nome = EXCLUDED.nome, endereco = EXCLUDED.endereco, referencia = EXCLUDED.referencia`,
-            [telefoneLimpo, cliente.nome, cliente.endereco, cliente.referencia]
-        );
-        logger.info(`Cliente "${cliente.nome}" salvo/atualizado no banco de dados.`);
-        
-        const resultPedido = await clientDB.query(
-            `INSERT INTO pedidos (cliente_telefone, dados_pedido)  
-             VALUES ($1, $2) RETURNING id`,
-            [telefoneLimpo, JSON.stringify(pedido)]
-        );
-        
-        const pedidoId = resultPedido.rows[0].id;
-        logger.info(`Pedido #${pedidoId} registrado no banco de dados.`);
-        
-        const cupomFiscal = gerarCupomFiscal({ ...pedido, id: pedidoId });
-        await client.sendMessage(numeroClienteParaApi, cupomFiscal);
-        logger.info(`✅ Cupom do pedido #${pedidoId} enviado para ${numeroClienteParaApi}`);
-        
-        // Lógica de acompanhamento (com verificação para não reenviar)
-        setTimeout(async () => {
-          // Implementação simplificada para não prender a resposta
-        }, 30 * 1000); // 30 segundos
-
-        setTimeout(async () => {
-          // Implementação simplificada
-        }, 30 * 60 * 1000); // 30 minutos
-
-        res.status(200).json({ success: true, pedidoId: pedidoId });
-    } catch (error) {
-        logger.error(`❌ Falha ao processar pedido para ${numeroClienteParaApi}: ${error.message}`);
-        res.status(500).json({ success: false, message: "Falha ao processar o pedido." });
-    } finally {
-        if(clientDB) clientDB.release();
-    }
-});
-
-app.get('/api/historico/:telefone', async (req, res) => {
-    const { telefone } = req.params;
-    const telefoneLimpo = telefone.replace(/\D/g, '');
-
-    if (!telefoneLimpo) {
-        return res.status(400).json({ success: false, message: "Formato de número de telefone inválido." });
-    }
-
-    let clientDB;
-    try {
-        clientDB = await pool.connect();
-        
-        const result = await clientDB.query(
-            `SELECT id, dados_pedido, criado_em FROM pedidos  
-             WHERE cliente_telefone = $1  
-             ORDER BY criado_em DESC LIMIT 20`, // Limita a 20 pedidos por segurança
-            [telefoneLimpo]
-        );
-
-        if (result.rows.length === 0) {
-            return res.json([]);  
-        }
-
-        const historico = result.rows.map(pedido => {
-            const dados = pedido.dados_pedido;
-            return {
-                pedidoId: pedido.id,
-                dataPedido: pedido.criado_em, // O frontend formata a data
-                valorTotal: dados.valorTotal,
-                itens: dados.carrinho.map(item => ({
-                    nomeProduto: item.nome,
-                    quantidade: item.quantidade,
-                    observacao: item.observacao || ""
-                }))
+            const categories = Object.keys(menuData);
+            const TAXA_ENTREGA = 5.00;
+            const STORAGE_KEYS = {
+                CART: 'doka_burger_cart',
+                CUSTOMER: 'doka_burger_customer'
             };
+
+            // Variáveis de estado da aplicação
+            let carrinho = [];
+            let clienteAtual = null;
+            let activeCategory = categories[0];
+            let currentProduct = null;
+            let identFlow = 'checkout';
+            let lastOrder = null;
+
+            // Seletores de elementos do DOM
+            const views = document.querySelectorAll('.view');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const menuContainer = document.getElementById('menu-container');
+            const desktopCategoryList = document.getElementById('desktop-category-list');
+            const mobileCategoryList = document.getElementById('mobile-category-list');
+            const searchInput = document.getElementById('search-input');
+            const productModal = document.getElementById('product-modal');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const modalContent = document.getElementById('modal-content');
+            const modalFooter = document.getElementById('modal-footer');
+            const desktopCartContainer = document.getElementById('desktop-cart-container');
+            const mobileCartBadge = document.getElementById('mobile-cart-badge');
+            const mobileCartFlyout = document.getElementById('mobile-cart-flyout');
+            const desktopCheckoutBtn = document.getElementById('desktop-checkout-btn');
+            const mobileCartBtn = document.getElementById('mobile-cart-btn');
+            const mobileCheckoutFlyoutBtn = document.getElementById('mobile-checkout-flyout-btn');
+            const mobileFlyoutTotal = document.getElementById('mobile-flyout-total');
+            const historyBtnDesktop = document.getElementById('history-btn-desktop');
+            const historyBtnMobile = document.getElementById('history-btn-mobile');
+            const loginRegisterBtn = document.getElementById('login-register-btn');
+            const identModal = document.getElementById('identification-modal');
+            const identForm = document.getElementById('ident-form');
+            const identCancelBtn = document.getElementById('ident-cancel-btn');
+            const identSubmitBtn = document.getElementById('ident-submit-btn');
+            const identPhoneInput = document.getElementById('ident-phone-input');
+            const identError = document.getElementById('ident-error');
+            const identModalTitle = document.getElementById('ident-modal-title');
+            const identModalSubtitle = document.getElementById('ident-modal-subtitle');
+            const regForm = document.getElementById('registration-form');
+            const regBackBtn = document.getElementById('reg-back-btn');
+            const checkoutBackBtn = document.getElementById('checkout-back-btn');
+            const placeOrderBtn = document.getElementById('place-order-btn');
+            const paymentMethodSelect = document.getElementById('payment-method');
+            const trocoInput = document.getElementById('troco-input');
+            const trocoCalculatedText = document.getElementById('troco-calculado-text');
+            const valorTrocoTexto = document.getElementById('valor-troco-texto');
+            const historyBackBtn = document.getElementById('history-back-btn');
+            const historyContainer = document.getElementById('history-container');
+            const successBackBtn = document.getElementById('success-back-btn');
+            const customMessageModal = document.getElementById('custom-message-modal');
+            const customMessageText = document.getElementById('custom-message-text');
+            const customMessageCloseBtn = document.getElementById('custom-message-close-btn');
+            const editOrderBtn = document.getElementById('edit-order-btn');
+            
+            const editOrderModal = document.getElementById('edit-order-modal');
+            const editModalCloseBtn = document.getElementById('edit-modal-close-btn');
+            const editModalCartItems = document.getElementById('edit-modal-cart-items');
+            const editAddressForm = document.getElementById('edit-address-form');
+            const editModalSaveBtn = document.getElementById('edit-modal-save-btn');
+
+            // ===================================================================
+            // FUNÇÕES DE PERSISTÊNCIA E UI
+            // ===================================================================
+
+            const updateFlyoutButtonVisibility = () => {
+                const activeViewElement = document.querySelector('.view.active');
+                const currentViewId = activeViewElement ? activeViewElement.id : '';
+                const isMenuVisible = currentViewId === 'menu-view';
+                const shouldShow = isMenuVisible && carrinho.length > 0;
+                mobileCartFlyout.classList.toggle('hidden', !shouldShow);
+            };
+
+            const saveState = () => {
+                localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(carrinho));
+                localStorage.setItem(STORAGE_KEYS.CUSTOMER, JSON.stringify(clienteAtual));
+            };
+
+            const loadState = () => {
+                const savedCart = localStorage.getItem(STORAGE_KEYS.CART);
+                const savedCustomer = localStorage.getItem(STORAGE_KEYS.CUSTOMER);
+                if (savedCart) carrinho = JSON.parse(savedCart);
+                if (savedCustomer) clienteAtual = JSON.parse(savedCustomer);
+            };
+
+            const showMessageModal = (message) => {
+                customMessageText.textContent = message;
+                customMessageModal.style.display = 'flex';
+            };
+
+            const hideMessageModal = () => customMessageModal.style.display = 'none';
+            const formatCurrency = (value) => `R$ ${value.toFixed(2).replace('.', ',')}`;
+
+            const showView = (viewName) => {
+                views.forEach(view => view.classList.remove('active'));
+                const activeView = document.getElementById(`${viewName}-view`);
+                if(activeView) activeView.classList.add('active');
+                
+                navLinks.forEach(link => {
+                    const isHistoryLink = link.id === 'history-btn-desktop' || link.id === 'history-btn-mobile';
+                    const isActive = link.dataset.view === viewName || (viewName === 'history' && isHistoryLink);
+                    link.classList.toggle('nav-link-active', isActive);
+                    link.classList.toggle('text-gray-800', isActive);
+                    link.classList.toggle('text-gray-500', !isActive);
+                });
+                window.scrollTo(0, 0);
+                updateFlyoutButtonVisibility();
+            };
+            
+            const renderMenu=(filter="")=>{menuContainer.innerHTML="";const t=filter.toLowerCase().trim();let e=!1;if(0===categories.length)return void(menuContainer.innerHTML='<p class="text-center text-red-500 py-10">Erro ao carregar o cardápio. Tente recarregar a página.</p>');categories.forEach(r=>{const o=menuData[r].filter(e=>e.nome.toLowerCase().includes(t)||e.descricao.toLowerCase().includes(t));if(0!==o.length){e=!0;const a=document.createElement("div");a.id=`category-${r.replace(/\s/g,"-")}`,a.className="mb-8 scroll-mt-32",a.innerHTML=`<h2 class="text-2xl font-bold mb-4">${r}</h2>`;const n=document.createElement("div");n.className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8",o.forEach(t=>{const e=document.createElement("div");e.className="bg-white rounded-xl overflow-hidden flex gap-4 cursor-pointer hover:shadow-lg transition-shadow duration-300 border border-gray-100",e.innerHTML=`
+                                            <div class="flex-grow p-4 flex flex-col justify-between">
+                                                <div>
+                                                    <h3 class="font-bold text-lg">${t.nome}</h3>
+                                                    <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>
+                                                </div>
+                                                <div class="flex items-baseline gap-2 mt-4">
+                                                    ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}
+                                                    <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>
+                                                </div>
+                                            </div>
+                                            <div class="relative flex-shrink-0">
+                                                <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">
+                                            </div>
+                                        `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
+            const renderCategories=()=>{desktopCategoryList.innerHTML="",mobileCategoryList.innerHTML="",categories.forEach(t=>{const e=activeCategory===t,r=`category-${t.replace(/\s/g,"-")}`,o=document.createElement("li"),a=document.createElement("button");a.textContent=t,a.className=`w-full text-left px-3 py-2 rounded-md font-semibold transition-colors ${e?"category-btn-active":"text-gray-600 hover:bg-gray-100"}`,a.onclick=()=>handleCategoryClick(t,r),o.appendChild(a),desktopCategoryList.appendChild(o);const n=document.createElement("button");n.textContent=t,n.className=`inline-block px-4 py-2 rounded-full text-sm font-semibold mr-2 transition-colors ${e?"category-btn-active":"bg-white text-gray-700 border"}`,n.onclick=()=>handleCategoryClick(t,r),mobileCategoryList.appendChild(n)})};
+            const handleCategoryClick=(t,e)=>{activeCategory=t,searchInput.value="",renderMenu(),renderCategories();const r=document.getElementById(e);if(r){const o=-120,a=r.getBoundingClientRect().top+window.pageYOffset+o;window.scrollTo({top:a,behavior:"smooth"})}};
+
+            const renderCart = () => {
+                const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+                const cartItemCount = carrinho.reduce((sum, item) => sum + item.quantidade, 0);
+                
+                mobileCartBadge.textContent = cartItemCount;
+                mobileCartBadge.classList.toggle('hidden', carrinho.length === 0);
+                mobileFlyoutTotal.textContent = formatCurrency(total);
+                desktopCheckoutBtn.disabled = carrinho.length === 0;
+
+                if (carrinho.length === 0) {
+                    desktopCartContainer.innerHTML = `<div class="text-center py-8"><i data-lucide="shopping-bag" class="text-gray-300 mx-auto mb-4 w-12 h-12"></i><h3 class="font-bold text-lg">Sua sacola está vazia</h3><p class="text-gray-500 text-sm">Adicione itens para continuar</p></div>`;
+                } else {
+                    let cartHtml = `<div class="w-full"><h3 class="font-bold text-lg mb-4 text-left">Sua Sacola</h3>`;
+                    carrinho.forEach((item, index) => {
+                        cartHtml += `
+                                <div class="text-left mb-3 pb-3 border-b">
+                                    <div class="flex justify-between items-start">
+                                        <p class="font-semibold pr-2">${item.quantidade}x ${item.nome}</p>
+                                        <button class="remove-item-btn text-red-500 hover:text-red-700" data-index="${index}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                    <p class="text-right font-bold">${formatCurrency(item.preco * item.quantidade)}</p>
+                                    ${item.observacao ? `<p class="text-xs text-gray-500 mt-1">Obs: ${item.observacao}</p>` : ''}
+                                </div>`;
+                    });
+                    cartHtml += `<div class="flex justify-between font-bold text-lg mt-4"><span>Total</span><span>${formatCurrency(total)}</span></div></div>`;
+                    desktopCartContainer.innerHTML = cartHtml;
+
+                    document.querySelectorAll('.remove-item-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const indexToRemove = parseInt(e.currentTarget.dataset.index, 10);
+                            carrinho.splice(indexToRemove, 1);
+                            saveState();
+                            renderCart();
+                        });
+                    });
+                }
+                lucide.createIcons();
+                updateFlyoutButtonVisibility();
+            };
+            
+            const showProductModal = (product) => {
+                currentProduct = product;
+                let quantity = 1;
+                
+                modalContent.innerHTML = `
+                    <img src="${product.imagem}" alt="${product.nome}" class="w-full h-64 object-cover" onError="this.onerror=null;this.src='https://placehold.co/400x300/f0f0f0/333?text=Doka';">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold mb-2">${product.nome}</h3>
+                        <p class="text-gray-600 mb-4">${product.descricao}</p>
+                        <div class="mb-4">
+                            <h4 class="text-lg font-semibold mb-2">Observações</h4>
+                            <textarea id="observations-input" class="w-full border rounded-lg p-2 text-gray-700 border-gray-300 focus:ring-2 focus:ring-laranja" rows="3" placeholder="Ex: Tirar a cebola, maionese à parte, etc."></textarea>
+                        </div>
+                    </div>`;
+
+                modalFooter.innerHTML = `
+                    <div class="flex items-center border rounded-lg">
+                        <button id="minus-btn" class="p-3 text-gray-700"><i data-lucide="minus" class="w-5 h-5"></i></button>
+                        <span id="quantity-display" class="px-4 font-bold text-lg">${quantity}</span>
+                        <button id="plus-btn" class="p-3 text-gray-700"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                    </div>
+                    <button id="add-to-cart-btn" class="flex-grow btn-primary font-bold py-3 px-6 rounded-lg flex items-center justify-center">
+                        Adicionar ${formatCurrency(product.preco * quantity)}
+                    </button>`;
+                lucide.createIcons();
+
+                const quantityDisplay = document.getElementById('quantity-display');
+                const addToCartBtn = document.getElementById('add-to-cart-btn');
+                const observationsInput = document.getElementById('observations-input');
+
+                const updateButtonPrice = () => {
+                    addToCartBtn.innerHTML = `Adicionar ${formatCurrency(product.preco * quantity)}`;
+                }
+
+                document.getElementById('plus-btn').onclick = () => {
+                    quantity++;
+                    quantityDisplay.textContent = quantity;
+                    updateButtonPrice();
+                };
+
+                document.getElementById('minus-btn').onclick = () => {
+                    if (quantity > 1) {
+                        quantity--;
+                        quantityDisplay.textContent = quantity;
+                        updateButtonPrice();
+                    }
+                };
+
+                addToCartBtn.onclick = () => {
+                    const observations = observationsInput.value.trim();
+                    const itemIndex = carrinho.findIndex(item => item.id === currentProduct.id && item.observacao === observations);
+                    
+                    if (itemIndex > -1) {
+                        carrinho[itemIndex].quantidade += quantity;
+                    } else {
+                        carrinho.push({ ...currentProduct, quantidade: quantity, observacao: observations });
+                    }
+                    
+                    saveState();
+                    renderCart();
+                    
+                    const msg = document.createElement('div');
+                    msg.className = 'confirmation-message';
+                    msg.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Item adicionado à sacola!';
+                    document.body.appendChild(msg);
+                    msg.style.display = 'flex';
+                    lucide.createIcons();
+
+                    addToCartBtn.classList.add('btn-confirm');
+                    addToCartBtn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> Adicionado!';
+                    lucide.createIcons();
+
+                    setTimeout(() => productModal.classList.add('hidden'), 1000);
+                    setTimeout(() => {
+                        msg.style.opacity = '0';
+                        setTimeout(() => msg.remove(), 300);
+                    }, 2500);
+                };
+                
+                productModal.classList.remove('hidden');
+            };
+
+            const showIdentModal = (flowType) => {
+                identFlow = flowType;
+                identModalTitle.textContent = flowType === 'history' ? 'Ver Meus Pedidos' : 'Bem-vindo!';
+                identModalSubtitle.textContent = flowType === 'history' ? 'Informe seu WhatsApp para buscar seus pedidos.' : 'Informe seu WhatsApp para continuar.';
+                identPhoneInput.value = clienteAtual ? clienteAtual.telefone : '';
+                identError.classList.add('hidden');
+                identError.textContent = '';
+                identModal.classList.remove('hidden');
+            };
+
+            const handleCheckout = () => {
+                if (carrinho.length === 0) {
+                    showMessageModal('Sua sacola está vazia. Adicione itens para continuar.');
+                    return;
+                }
+                if (clienteAtual && clienteAtual.nome && clienteAtual.endereco) {
+                    renderCheckoutView();
+                    showView('checkout');
+                } else {
+                    showIdentModal('checkout');
+                }
+            };
+
+            const handleViewHistory = () => {
+                if (clienteAtual && clienteAtual.telefone) {
+                    renderHistoryView();
+                    showView('history');
+                } else {
+                    showIdentModal('history');
+                }
+            };
+            
+            const renderCheckoutView = () => {
+                if (!clienteAtual) return;
+                document.getElementById('checkout-cliente-nome').textContent = clienteAtual.nome;
+                document.getElementById('checkout-cliente-endereco').textContent = clienteAtual.endereco;
+                const refElem = document.getElementById('checkout-cliente-referencia');
+                refElem.textContent = clienteAtual.referencia ? `Ref: ${clienteAtual.referencia}` : '';
+                
+                let summaryHtml = '';
+                let subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+                carrinho.forEach(item => {
+                    const itemTotalPrice = item.preco * item.quantidade;
+                    summaryHtml += `<div class="flex justify-between text-sm mb-1"><span>${item.quantidade}x ${item.nome}</span><span>${formatCurrency(itemTotalPrice)}</span></div>`;
+                });
+                document.getElementById('checkout-cart-summary').innerHTML = summaryHtml;
+
+                const total = subtotal + TAXA_ENTREGA;
+                
+                document.getElementById('checkout-subtotal').textContent = formatCurrency(subtotal);
+                document.getElementById('checkout-taxa').textContent = formatCurrency(TAXA_ENTREGA);
+                document.getElementById('checkout-total').textContent = formatCurrency(total);
+
+                trocoInput.value = '';
+                trocoInput.classList.add('hidden');
+                trocoCalculatedText.classList.add('hidden');
+                paymentMethodSelect.value = 'Cartão de Crédito';
+            };
+
+            const renderHistoryView = async () => {
+                showView('history');
+                historyContainer.innerHTML = '<p class="text-center py-10">Buscando seu histórico... <i data-lucide="loader-circle" class="animate-spin inline-block"></i></p>';
+                lucide.createIcons();
+
+                try {
+                    // LÓGICA DE API REAL INTEGRADA AQUI
+                    const telefoneLimpo = clienteAtual.telefone.replace(/\D/g, '');
+                    const response = await fetch(`/api/historico/${telefoneLimpo}`);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => null);
+                        throw new Error(errorData?.message || 'Não foi possível buscar o histórico. Tente mais tarde.');
+                    }
+                    
+                    const pedidos = await response.json();
+
+                    if (!pedidos || pedidos.length === 0) {
+                        historyContainer.innerHTML = '<p class="text-center py-10 text-gray-500">Você ainda não fez nenhum pedido conosco.</p>';
+                        return;
+                    }
+                    
+                    const clientOrders = pedidos.sort((a, b) => new Date(b.dataPedido) - new Date(a.dataPedido));
+                    let historyHtml = '<div class="space-y-6">';
+                    clientOrders.forEach(order => {
+                        const data = new Date(order.dataPedido);
+                        const dataFormatada = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        const horaFormatada = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                        historyHtml += `
+                                <div class="bg-gray-50 p-4 rounded-lg border">
+                                    <p class="font-bold text-lg">Pedido #${order.pedidoId || order.id}</p>
+                                    <p class="text-sm text-gray-500 mb-2">${dataFormatada} às ${horaFormatada}</p>
+                                    <div class="space-y-1 text-sm">`;
+                        
+                        // Adaptação para a estrutura de 'itens' vinda da API real
+                        (order.itens || order.carrinho).forEach(item => {
+                            historyHtml += `<p>• ${item.quantidade}x ${item.nomeProduto || item.nome}</p>`;
+                            if (item.observacao) {
+                                historyHtml += `<p class="pl-4 text-xs text-gray-500">Obs: ${item.observacao}</p>`;
+                            }
+                        });
+
+                        historyHtml += `</div><p class="font-bold text-right mt-2">Total: ${formatCurrency(order.valorTotal)}</p></div>`;
+                    });
+                    historyHtml += '</div>';
+                    historyContainer.innerHTML = historyHtml;
+
+                } catch (error) {
+                    historyContainer.innerHTML = `<p class="text-center py-10 text-red-500">${error.message}</p>`;
+                    console.error("Erro na API de histórico:", error);
+                }
+            };
+            
+            const renderSuccessView = () => {
+                const { cliente, carrinho, pagamento, troco, pedidoId, valorTotal } = lastOrder;
+                const subtotal = valorTotal - TAXA_ENTREGA;
+                const now = new Date();
+                const dataFormatada = now.toLocaleDateString('pt-BR');
+                const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                
+                let receiptHtml = `
+                    <p class="text-center">================================</p>
+                    <p class="text-center font-semibold">Doka Burger - Pedido #${pedidoId}</p>
+                    <p class="text-center">${`${dataFormatada} às ${horaFormatada}`}</p>
+                    <p class="text-center">================================</p>
+                    <p class="font-bold mt-2">👤 DADOS DO CLIENTE</p>
+                    <p>Nome: ${cliente.nome}</p>
+                    <p>Telefone: ${cliente.telefone}</p>
+                    <p class="font-bold mt-2">ITENS:</p>`;
+                carrinho.forEach(item => {
+                    receiptHtml += `<div><p>• ${item.quantidade}x ${item.nome.padEnd(18, ' ')} R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}</p>${item.observacao ? `<p class="text-xs pl-2">  Obs: ${item.observacao}</p>` : ''}</div>`;
+                });
+                receiptHtml += `
+                    <p>--------------------------------</p>
+                    <p>${`Subtotal:`.padEnd(22, ' ')}R$ ${subtotal.toFixed(2).replace('.', ',')}</p>
+                    <p>${`Taxa de Entrega:`.padEnd(22, ' ')}R$ ${TAXA_ENTREGA.toFixed(2).replace('.', ',')}</p>
+                    <p class="font-bold">TOTAL: R$ ${valorTotal.toFixed(2).replace('.', ',')}</p>
+                    <p>--------------------------------</p>
+                    <p class="font-bold mt-2">ENDEREÇO:</p>
+                    <p>${cliente.endereco}</p>
+                    ${cliente.referencia ? `<p>Ref: ${cliente.referencia}</p>` : ''}
+                    <p>--------------------------------</p>
+                    <p class="font-bold mt-2">FORMA DE PAGAMENTO:</p>
+                    <p>${pagamento}</p>
+                    ${pagamento === 'Dinheiro' && troco ? `<p>Troco para: R$ ${parseFloat(troco.replace(',', '.')).toFixed(2).replace('.', ',')}</p>` : ''}
+                    <p class="text-center mt-4">================================</p>
+                    <p class="text-center font-semibold">OBRIGADO PELA PREFERÊNCIA!</p>`;
+                document.getElementById('success-receipt').innerHTML = receiptHtml;
+                showView('success');
+            };
+
+            const setStoreStatus = () => {
+                const now = new Date();
+                const dayOfWeek = now.getDay();
+                const hour = now.getHours();
+                const isOpen = dayOfWeek !== 1 && (hour >= 18 && hour < 23); 
+                
+                const statusHtml = isOpen 
+                    ? `<i data-lucide="circle" class="w-[14px] h-[14px] text-verde fill-current"></i><span class="text-verde">Aberto agora</span>`
+                    : `<i data-lucide="clock" class="w-[14px] h-[14px] text-red-600"></i><span class="text-red-600">Fechado</span><span class="text-gray-500 font-normal">• Abrimos às 18h</span>`;
+
+                document.getElementById('status-loja-mobile').innerHTML = statusHtml;
+                document.getElementById('status-loja-desktop').innerHTML = statusHtml;
+                lucide.createIcons();
+            };
+
+            const renderEditOrderModal = () => {
+                if (!clienteAtual || carrinho.length === 0) {
+                    editOrderModal.classList.add('hidden');
+                    return;
+                }
+
+                editModalCartItems.innerHTML = '';
+
+                carrinho.forEach((item, index) => {
+                    const itemHtml = `
+                        <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                            <div class="flex-grow">
+                                <p class="font-semibold">${item.quantidade}x ${item.nome}</p>
+                                <p class="text-sm text-gray-600">${formatCurrency(item.preco * item.quantidade)}</p>
+                            </div>
+                            <button class="remove-item-from-modal-btn text-red-500 hover:text-red-700 p-2" data-index="${index}">
+                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    `;
+                    editModalCartItems.innerHTML += itemHtml;
+                });
+                lucide.createIcons();
+
+                editAddressForm.elements.endereco.value = clienteAtual.endereco || '';
+                editAddressForm.elements.referencia.value = clienteAtual.referencia || '';
+
+                document.querySelectorAll('.remove-item-from-modal-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        const indexToRemove = parseInt(e.currentTarget.dataset.index, 10);
+                        carrinho.splice(indexToRemove, 1);
+                        
+                        if (carrinho.length === 0) {
+                            editOrderModal.classList.add('hidden');
+                            showView('menu');
+                            showMessageModal("Seu carrinho ficou vazio. Adicione novos itens!");
+                        } else {
+                            renderEditOrderModal();
+                        }
+                        
+                        saveState();
+                        renderCart();
+                        renderCheckoutView();
+                    };
+                });
+            };
+
+            const showEditOrderModal = () => {
+                renderEditOrderModal();
+                editOrderModal.classList.remove('hidden');
+            };
+
+            const saveOrderAndAddressChanges = () => {
+                const newAddress = editAddressForm.elements.endereco.value.trim();
+                const newReference = editAddressForm.elements.referencia.value.trim();
+
+                if (newAddress) {
+                    clienteAtual.endereco = newAddress;
+                    clienteAtual.referencia = newReference;
+                } else {
+                    showMessageModal("O campo de endereço não pode ficar vazio.");
+                    return;
+                }
+
+                saveState();
+                renderCheckoutView();
+                editOrderModal.classList.add('hidden');
+                showMessageModal("Alterações salvas com sucesso!");
+            };
+
+            // ===================================================================
+            // EVENT LISTENERS E LÓGICA DE NEGÓCIO
+            // ===================================================================
+            
+            customMessageCloseBtn.addEventListener('click', hideMessageModal);
+            modalCloseBtn.addEventListener('click', () => productModal.classList.add('hidden'));
+            searchInput.addEventListener('input', (e) => renderMenu(e.target.value));
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    const view = e.currentTarget.dataset.view;
+                    if(view) showView(view);
+                });
+            });
+            
+            desktopCheckoutBtn.addEventListener('click', handleCheckout);
+            mobileCartBtn.addEventListener('click', handleCheckout);
+            mobileCheckoutFlyoutBtn.addEventListener('click', handleCheckout);
+            loginRegisterBtn.addEventListener('click', () => showIdentModal('checkout'));
+            
+            historyBtnDesktop.addEventListener('click', handleViewHistory);
+            historyBtnMobile.addEventListener('click', handleViewHistory);
+
+            identCancelBtn.addEventListener('click', () => identModal.classList.add('hidden'));
+            
+            editOrderBtn.addEventListener('click', showEditOrderModal);
+
+            editModalCloseBtn.addEventListener('click', () => editOrderModal.classList.add('hidden'));
+            editModalSaveBtn.addEventListener('click', saveOrderAndAddressChanges);
+
+            identForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                identError.classList.add('hidden');
+                
+                const telefoneCru = identPhoneInput.value;
+                const telefoneLimpo = telefoneCru.replace(/\D/g, '');
+
+                if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
+                    identError.textContent = "Número incorreto! Por favor, digite 10 ou 11 números (DDD + Telefone).";
+                    identError.classList.remove('hidden');
+                    return;
+                }
+
+                identSubmitBtn.disabled = true;
+                identSubmitBtn.innerHTML = '<i data-lucide="loader-circle" class="animate-spin inline-block w-4 h-4"></i>';
+                lucide.createIcons();
+                
+                try {
+                    // LÓGICA DE API REAL INTEGRADA AQUI
+                    const response = await fetch('/api/identificar-cliente', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ telefone: telefoneLimpo })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.message || 'Erro ao verificar telefone.');
+                    }
+
+                    clienteAtual = data.cliente;
+                    clienteAtual.telefone = telefoneCru;
+                    saveState();
+                    identModal.classList.add('hidden');
+
+                    if (identFlow === 'history') {
+                        await renderHistoryView();
+                    } else if (data.isNew) {
+                        showView('registration');
+                    } else {
+                        renderCheckoutView();
+                        showView('checkout');
+                    }
+                } catch (error) {
+                    showMessageModal(`Erro: ${error.message}`);
+                    identError.textContent = error.message;
+                    identError.classList.remove('hidden');
+                } finally {
+                    identSubmitBtn.disabled = false;
+                    identSubmitBtn.innerHTML = 'Continuar';
+                }
+            });
+
+            const handlePhoneInput = (event) => {
+                let input = event.target;
+                input.value = phoneMask(input.value);
+            };
+
+            const phoneMask = (value) => {
+                if (!value) return "";
+                value = value.replace(/\D/g,'');
+                value = value.replace(/(\d{2})(\d)/,"($1) $2");
+                value = value.replace(/(\d)(\d{4})$/,"$1-$2");
+                return value;
+            };
+            
+            identPhoneInput.addEventListener('input', handlePhoneInput);
+
+
+            regBackBtn.addEventListener('click', () => showIdentModal(identFlow));
+
+            regForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                clienteAtual.nome = formData.get('nome');
+                clienteAtual.endereco = formData.get('endereco');
+                clienteAtual.referencia = formData.get('referencia');
+                
+                saveState();
+                
+                if (identFlow === 'checkout') {
+                    renderCheckoutView();
+                    showView('checkout');
+                } else {
+                    handleViewHistory();
+                }
+            });
+            
+            checkoutBackBtn.addEventListener('click', () => showView('menu'));
+            
+            paymentMethodSelect.addEventListener('change', (e) => {
+                trocoInput.classList.toggle('hidden', e.target.value !== 'Dinheiro');
+                trocoCalculatedText.classList.add('hidden');
+            });
+
+            trocoInput.addEventListener('input', () => {
+                const trocoValue = parseFloat(trocoInput.value.replace(',', '.'));
+                const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+                const totalPedido = subtotal + TAXA_ENTREGA;
+
+                if (trocoValue && !isNaN(trocoValue) && trocoValue > totalPedido) {
+                    const trocoNecessario = trocoValue - totalPedido;
+                    valorTrocoTexto.textContent = formatCurrency(trocoNecessario);
+                    trocoCalculatedText.classList.remove('hidden');
+                } else {
+                    trocoCalculatedText.classList.add('hidden');
+                }
+            });
+
+            placeOrderBtn.addEventListener('click', async () => {
+                const selectedPaymentMethod = paymentMethodSelect.value;
+                if (!selectedPaymentMethod) {
+                    showMessageModal("Por favor, selecione uma forma de pagamento.");
+                    return;
+                }
+
+                if (selectedPaymentMethod === 'Dinheiro') {
+                    const trocoValue = parseFloat(trocoInput.value.replace(',', '.'));
+                    const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+                    const totalPedido = subtotal + TAXA_ENTREGA;
+                    if (trocoInput.value && (isNaN(trocoValue) || trocoValue <= totalPedido)) {
+                        showMessageModal("O valor para troco deve ser maior que o total do pedido!");
+                        return;
+                    }
+                }
+                
+                placeOrderBtn.disabled = true;
+                placeOrderBtn.innerHTML = '<i data-lucide="loader-circle" class="animate-spin inline-block w-4 h-4 mr-2"></i> Enviando Pedido...';
+                lucide.createIcons();
+
+                const subtotal = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+                const valorTotal = subtotal + TAXA_ENTREGA;
+
+                const pedidoPayload = {
+                    cliente: { ...clienteAtual },
+                    carrinho: carrinho.map(item => ({ 
+                        id: item.id, 
+                        nome: item.nome,
+                        preco: item.preco,
+                        quantidade: item.quantidade, 
+                        observacao: item.observacao 
+                    })),
+                    pagamento: selectedPaymentMethod,
+                    troco: selectedPaymentMethod === 'Dinheiro' && trocoInput.value ? trocoInput.value.replace('.', ',') : null,
+                    valorTotal: valorTotal,
+                };
+                
+                try {
+                    // LÓGICA DE API REAL INTEGRADA AQUI
+                    const response = await fetch('/api/criar-pedido', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(pedidoPayload)
+                    });
+                    
+                    const data = await response.json();
+
+                    if(!response.ok || !data.success) {
+                        throw new Error(data.message || 'Não foi possível criar o pedido.');
+                    }
+                    
+                    lastOrder = { ...pedidoPayload, pedidoId: data.pedidoId, dataPedido: new Date().toISOString() };
+                    carrinho = [];
+                    saveState();
+                    renderCart();
+                    renderSuccessView();
+
+                } catch(error) {
+                    showMessageModal(`Erro ao enviar pedido: ${error.message}`);
+                } finally {
+                    placeOrderBtn.disabled = false;
+                    placeOrderBtn.innerHTML = 'Finalizar Pedido';
+                }
+            });
+
+            historyBackBtn.addEventListener('click', () => showView('menu'));
+            successBackBtn.addEventListener('click', () => showView('menu'));
+
+            // ===================================================================
+            // INICIALIZAÇÃO DA APLICAÇÃO
+            // ===================================================================
+            const initializeApp = () => {
+                loadState();
+                setStoreStatus();
+                renderMenu();
+                renderCategories();
+                renderCart();
+                showView('menu');
+                lucide.createIcons();
+                console.log("Aplicação pronta para produção.");
+            };
+
+            initializeApp();
         });
-        
-        logger.info(`Histórico de ${historico.length} pedido(s) retornado para o telefone ${telefoneLimpo}`);
-        res.json(historico);
-
-    } catch (error) {
-        logger.error(`❌ Erro ao buscar histórico para ${telefoneLimpo}: ${error.message}`);
-        res.status(500).json({ success: false, message: "Erro interno ao buscar o histórico de pedidos." });
-    } finally {
-        if (clientDB) clientDB.release();
-    }
-});
-
-
-// ############# INÍCIO DA ALTERAÇÃO #############
-// Rota "pega-tudo" para servir o frontend.
-// DEVE ser uma das últimas rotas, antes do tratador de erros.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-// ############# FIM DA ALTERAÇÃO #############
-
-
-// Middleware global para tratamento de erros (deve ser o último)
-app.use((err, req, res, next) => {
-    logger.error(`Erro não tratado: ${err.stack}`);
-    res.status(500).json({ success: false, message: "Ocorreu um erro inesperado no servidor." });
-});
-
-// --- Iniciar o Servidor ---
-app.listen(PORT, async () => {
-    await setupDatabase().catch(logger.error);
-    logger.info(`🚀 Servidor rodando na porta ${PORT}.`);
-});
+    </script>
+</body>
+</html>
