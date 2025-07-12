@@ -232,7 +232,13 @@
                         <h2 class="text-3xl font-bold mb-6">Finalizar Pedido</h2>
                         
                         <div class="bg-gray-50 p-4 rounded-lg mb-6 border">
-                            <h3 class="font-semibold text-lg mb-2">Detalhes da Entrega</h3>
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-semibold text-lg">Detalhes da Entrega</h3>
+                                <button id="edit-order-btn" class="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-laranja">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                    Editar Pedido
+                                </button>
+                            </div>
                             <p id="checkout-cliente-nome" class="font-bold"></p>
                             <p id="checkout-cliente-endereco"></p>
                             <p id="checkout-cliente-referencia" class="text-sm text-gray-500"></p>
@@ -306,8 +312,8 @@
     </div>
     
     <div id="mobile-cart-flyout" class="lg:hidden hidden fixed bottom-20 right-4 z-40">
-        <button id="mobile-checkout-flyout-btn" class="btn-primary font-semibold py-3 px-5 rounded-full shadow-lg flex items-center gap-3">
-            <span>Ver Sacola</span>
+        <button id="mobile-checkout-flyout-btn" class="btn-primary font-semibold py-2 px-3 text-sm rounded-full shadow-lg flex items-center gap-3">
+            <span>Total</span>
             <span id="mobile-flyout-total" class="font-bold"></span>
         </button>
     </div>
@@ -436,6 +442,7 @@
             const customMessageModal = document.getElementById('custom-message-modal');
             const customMessageText = document.getElementById('custom-message-text');
             const customMessageCloseBtn = document.getElementById('custom-message-close-btn');
+            const editOrderBtn = document.getElementById('edit-order-btn');
             
             // ===================================================================
             // FUNÇÕES DE PERSISTÊNCIA E UI
@@ -476,7 +483,7 @@
                 window.scrollTo(0, 0);
             };
             
-            const renderMenu=(filter="")=>{menuContainer.innerHTML="";const t=filter.toLowerCase().trim();let e=!1;if(0===categories.length)return void(menuContainer.innerHTML='<p class="text-center text-red-500 py-10">Erro ao carregar o cardápio. Tente recarregar a página.</p>');categories.forEach(r=>{const o=menuData[r].filter(e=>e.nome.toLowerCase().includes(t)||e.descricao.toLowerCase().includes(t));if(0!==o.length){e=!0;const a=document.createElement("div");a.id=`category-${r.replace(/\s/g,"-")}`,a.className="mb-8 scroll-mt-32",a.innerHTML=`<h2 class="text-2xl font-bold mb-4">${r}</h2>`;const n=document.createElement("div");n.className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8",o.forEach(t=>{const e=document.createElement("div");e.className="bg-white rounded-xl overflow-hidden flex gap-4 cursor-pointer hover:shadow-lg transition-shadow duration-300 border border-gray-100",e.innerHTML=`\n                                <div class="flex-grow p-4 flex flex-col justify-between">\n                                    <div>\n                                        <h3 class="font-bold text-lg">${t.nome}</h3>\n                                        <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>\n                                    </div>\n                                    <div class="flex items-baseline gap-2 mt-4">\n                                        ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}\n                                        <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>\n                                    </div>\n                                </div>\n                                <div class="relative flex-shrink-0">\n                                    <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">\n                                </div>\n                            `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
+            const renderMenu=(filter="")=>{menuContainer.innerHTML="";const t=filter.toLowerCase().trim();let e=!1;if(0===categories.length)return void(menuContainer.innerHTML='<p class="text-center text-red-500 py-10">Erro ao carregar o cardápio. Tente recarregar a página.</p>');categories.forEach(r=>{const o=menuData[r].filter(e=>e.nome.toLowerCase().includes(t)||e.descricao.toLowerCase().includes(t));if(0!==o.length){e=!0;const a=document.createElement("div");a.id=`category-${r.replace(/\s/g,"-")}`,a.className="mb-8 scroll-mt-32",a.innerHTML=`<h2 class="text-2xl font-bold mb-4">${r}</h2>`;const n=document.createElement("div");n.className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8",o.forEach(t=>{const e=document.createElement("div");e.className="bg-white rounded-xl overflow-hidden flex gap-4 cursor-pointer hover:shadow-lg transition-shadow duration-300 border border-gray-100",e.innerHTML=`\n                                 <div class="flex-grow p-4 flex flex-col justify-between">\n                                     <div>\n                                         <h3 class="font-bold text-lg">${t.nome}</h3>\n                                         <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>\n                                     </div>\n                                     <div class="flex items-baseline gap-2 mt-4">\n                                         ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}\n                                         <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>\n                                     </div>\n                                 </div>\n                                 <div class="relative flex-shrink-0">\n                                     <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">\n                                 </div>\n                             `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
             const renderCategories=()=>{desktopCategoryList.innerHTML="",mobileCategoryList.innerHTML="",categories.forEach(t=>{const e=activeCategory===t,r=`category-${t.replace(/\s/g,"-")}`,o=document.createElement("li"),a=document.createElement("button");a.textContent=t,a.className=`w-full text-left px-3 py-2 rounded-md font-semibold transition-colors ${e?"category-btn-active":"text-gray-600 hover:bg-gray-100"}`,a.onclick=()=>handleCategoryClick(t,r),o.appendChild(a),desktopCategoryList.appendChild(o);const n=document.createElement("button");n.textContent=t,n.className=`inline-block px-4 py-2 rounded-full text-sm font-semibold mr-2 transition-colors ${e?"category-btn-active":"bg-white text-gray-700 border"}`,n.onclick=()=>handleCategoryClick(t,r),mobileCategoryList.appendChild(n)})};
             const handleCategoryClick=(t,e)=>{activeCategory=t,searchInput.value="",renderMenu(),renderCategories();const r=document.getElementById(e);if(r){const o=-120,a=r.getBoundingClientRect().top+window.pageYOffset+o;window.scrollTo({top:a,behavior:"smooth"})}};
 
@@ -496,14 +503,14 @@
                     let cartHtml = `<div class="w-full"><h3 class="font-bold text-lg mb-4 text-left">Sua Sacola</h3>`;
                     carrinho.forEach((item, index) => {
                         cartHtml += `
-                            <div class="text-left mb-3 pb-3 border-b">
-                                <div class="flex justify-between items-start">
-                                    <p class="font-semibold pr-2">${item.quantidade}x ${item.nome}</p>
-                                    <button class="remove-item-btn text-red-500 hover:text-red-700" data-index="${index}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                </div>
-                                <p class="text-right font-bold">${formatCurrency(item.preco * item.quantidade)}</p>
-                                ${item.observacao ? `<p class="text-xs text-gray-500 mt-1">Obs: ${item.observacao}</p>` : ''}
-                            </div>`;
+                                <div class="text-left mb-3 pb-3 border-b">
+                                    <div class="flex justify-between items-start">
+                                        <p class="font-semibold pr-2">${item.quantidade}x ${item.nome}</p>
+                                        <button class="remove-item-btn text-red-500 hover:text-red-700" data-index="${index}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                    <p class="text-right font-bold">${formatCurrency(item.preco * item.quantidade)}</p>
+                                    ${item.observacao ? `<p class="text-xs text-gray-500 mt-1">Obs: ${item.observacao}</p>` : ''}
+                                </div>`;
                     });
                     cartHtml += `<div class="flex justify-between font-bold text-lg mt-4"><span>Total</span><span>${formatCurrency(total)}</span></div></div>`;
                     desktopCartContainer.innerHTML = cartHtml;
@@ -691,10 +698,10 @@
                         const horaFormatada = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
                         historyHtml += `
-                            <div class="bg-gray-50 p-4 rounded-lg border">
-                                <p class="font-bold text-lg">Pedido #${order.pedidoId || order.id}</p>
-                                <p class="text-sm text-gray-500 mb-2">${dataFormatada} às ${horaFormatada}</p>
-                                <div class="space-y-1 text-sm">`;
+                                <div class="bg-gray-50 p-4 rounded-lg border">
+                                    <p class="font-bold text-lg">Pedido #${order.pedidoId || order.id}</p>
+                                    <p class="text-sm text-gray-500 mb-2">${dataFormatada} às ${horaFormatada}</p>
+                                    <div class="space-y-1 text-sm">`;
                         
                         // Adaptação para a estrutura de 'itens' vinda da API real
                         (order.itens || order.carrinho).forEach(item => {
@@ -793,6 +800,12 @@
 
             identCancelBtn.addEventListener('click', () => identModal.classList.add('hidden'));
             
+            // Evento para o botão de editar o pedido na tela de checkout
+            editOrderBtn.addEventListener('click', () => {
+                // Apenas volta para la tela do menu, o estado do carrinho é mantido.
+                showView('menu'); 
+            });
+
             identForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 identError.classList.add('hidden');
