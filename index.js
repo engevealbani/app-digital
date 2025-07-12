@@ -348,14 +348,16 @@ app.post('/api/criar-pedido', async (req, res) => {
         await client.sendMessage(numeroClienteParaApi, cupomFiscal);
         logger.info(`✅ Cupom do pedido #${pedidoId} enviado para ${numeroClienteParaApi}`);
         
-        // Lógica de acompanhamento (com verificação para não reenviar)
-        setTimeout(async () => {
-          // Implementação simplificada para não prender a resposta
-        }, 30 * 1000); // 30 segundos
+        // Mensagens automáticas de acompanhamento
+        setTimeout(() => {
+            const msgConfirmacao = `✅ PEDIDO CONFIRMADO! 🚀\nSua explosão de sabores está INDO PARA CHAPA🔥️!!! 😋️🍔\n\n⏱ *Tempo estimado:* 40-50 minutos\n📱 *Acompanharemos seu pedido e avisaremos quando sair para entrega!`;
+            client.sendMessage(numeroClienteParaApi, msgConfirmacao).catch(err => logger.error(`Falha ao enviar msg de confirmação: ${err.message}`));
+        }, 30 * 1000);
 
-        setTimeout(async () => {
-          // Implementação simplificada
-        }, 30 * 60 * 1000); // 30 minutos
+        setTimeout(() => {
+            const msgEntrega = `🛵 *😋️OIEEE!!! SEU PEDIDO ESTÁ A CAMINHO!* 🔔\nDeve chegar em 10 a 15 minutinhos!\n\n_Se já recebeu, por favor ignore esta mensagem._`;
+            client.sendMessage(numeroClienteParaApi, msgEntrega).catch(err => logger.error(`Falha ao enviar msg de entrega: ${err.message}`));
+        }, 30 * 60 * 1000);
 
         res.status(200).json({ success: true, pedidoId: pedidoId });
     } catch (error) {
