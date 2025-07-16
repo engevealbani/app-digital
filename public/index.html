@@ -1119,13 +1119,11 @@
                     carrinho = [];
                     saveState();
                     renderCart();
-                    renderSuccessView();
+renderSuccessView();
 
-                    // CÓDIGO ADICIONADO PARA TOCAR O SOM
-                    setTimeout(() => {
-                        const successAudio = new Audio('https://engevealbani.github.io/music/notific1.mp4');
-                        successAudio.play().catch(error => console.error("Erro ao tocar o áudio de notificação:", error));
-                    }, 2000);
+                    // CÓDIGO MODIFICADO PARA TOCAR O SOM IMEDIATAMENTE
+                    const successAudio = new Audio('https://engevealbani.github.io/music/notific1.mp4');
+                    successAudio.play().catch(error => console.error("Erro ao tocar o áudio de notificação:", error));
 
                 } catch(error) {
                     showMessageModal(`Erro ao enviar pedido: ${error.message}`);
