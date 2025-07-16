@@ -239,11 +239,11 @@
                     <div class="bg-white p-4 rounded-b-2xl shadow-sm border-x border-b border-gray-100 text-center">
                         <h1 class="text-2xl font-bold mt-10">Doka Burger</h1>
                         <div id="status-loja-mobile" class="flex items-center justify-center gap-2 text-sm font-semibold mt-1">
-                           </div>
+                            </div>
                     </div>
                 </div>
                 <div id="desktop-info-header" class="hidden lg:block py-8 relative text-white bg-marrom p-8 rounded-2xl overflow-hidden my-8">
-                     <div class="absolute inset-0 header-banner opacity-30" style="background-image: url('https://engevealbani.github.io/yesfotos/foto/local-de-prazer.png');">
+                    <div class="absolute inset-0 header-banner opacity-30" style="background-image: url('https://engevealbani.github.io/yesfotos/foto/local-de-prazer.png');">
                         </div>
                     <div class="relative z-10">
                         <h1 class="text-5xl font-bold">Cardápio Doka Burger</h1>
@@ -340,9 +340,7 @@
 
                 <div id="success-view" class="view pt-6">
                     <div class="p-4 md:p-8 text-center bg-white rounded-xl shadow-sm border-gray-100">
-                        <div class="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4" style="background-color: rgba(37, 211, 102, 0.1);">
-                            <i data-lucide="check" class="w-12 h-12" style="color: var(--verde-confirmacao);"></i>
-                        </div>
+                        <img src="https://engevealbani.github.io/yesfotos/3dgifmaker36099.gif" alt="Pedido enviado com sucesso" class="w-24 h-24 mx-auto mb-4">
                         <h1 class="text-3xl font-bold mb-4" style="color: var(--keeta-dark);">Pedido Enviado!</h1>
                         <p class="text-lg text-gray-700 mb-6">Obrigado pela preferência! Seu pedido foi recebido e já está sendo preparado.</p>
                         <div id="success-receipt" class="bg-gray-50 p-4 rounded-lg border text-left font-mono text-sm max-w-md mx-auto whitespace-pre-wrap"></div>
@@ -549,20 +547,20 @@
             };
             
             const renderMenu=(filter="")=>{menuContainer.innerHTML="";const t=filter.toLowerCase().trim();let e=!1;if(0===categories.length)return void(menuContainer.innerHTML='<p class="text-center text-red-500 py-10">Erro ao carregar o cardápio. Tente recarregar a página.</p>');categories.forEach(r=>{const o=menuData[r].filter(e=>e.nome.toLowerCase().includes(t)||e.descricao.toLowerCase().includes(t));if(0!==o.length){e=!0;const a=document.createElement("div");a.id=`category-${r.replace(/\s/g,"-")}`,a.className="mb-8 scroll-mt-32",a.innerHTML=`<h2 class="text-2xl font-bold mb-4">${r}</h2>`;const n=document.createElement("div");n.className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8",o.forEach(t=>{const e=document.createElement("div");e.className="bg-white rounded-xl overflow-hidden flex gap-4 cursor-pointer hover:shadow-lg transition-shadow duration-300 border border-gray-100",e.innerHTML=`
-                                                <div class="flex-grow p-4 flex flex-col justify-between">
-                                                    <div>
-                                                        <h3 class="font-bold text-lg">${t.nome}</h3>
-                                                        <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>
-                                                    </div>
-                                                    <div class="flex items-baseline gap-2 mt-4">
-                                                        ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}
-                                                        <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>
-                                                    </div>
+                                            <div class="flex-grow p-4 flex flex-col justify-between">
+                                                <div>
+                                                    <h3 class="font-bold text-lg">${t.nome}</h3>
+                                                    <p class="text-gray-500 text-sm mt-1 line-clamp-2">${t.descricao}</p>
                                                 </div>
-                                                <div class="relative flex-shrink-0">
-                                                    <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">
+                                                <div class="flex items-baseline gap-2 mt-4">
+                                                    ${t.preco_antigo?`<p class="text-sm text-gray-400 line-through">${formatCurrency(t.preco_antigo)}</p>`:""}
+                                                    <p class="text-lg font-semibold" style="color: var(--laranja);">${formatCurrency(t.preco)}</p>
                                                 </div>
-                                            `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
+                                            </div>
+                                            <div class="relative flex-shrink-0">
+                                                <img src="${t.imagem}" alt="${t.nome}" class="w-32 h-full object-cover" onError="this.onerror=null;this.src='https://placehold.co/128x128/f0f0f0/333?text=Doka';">
+                                            </div>
+                                        `,e.addEventListener("click",()=>showProductModal(t)),n.appendChild(e)}),a.appendChild(n),menuContainer.appendChild(a)}}),e||(menuContainer.innerHTML=`<p class="text-center text-gray-500 py-10">Nenhum produto encontrado para "<strong>${t}</strong>".</p>`),lucide.createIcons()};
             const renderCategories=()=>{desktopCategoryList.innerHTML="",mobileCategoryList.innerHTML="",categories.forEach(t=>{const e=activeCategory===t,r=`category-${t.replace(/\s/g,"-")}`,o=document.createElement("li"),a=document.createElement("button");a.textContent=t,a.className=`w-full text-left px-3 py-2 rounded-md font-semibold transition-colors ${e?"category-btn-active":"text-gray-600 hover:bg-gray-100"}`,a.onclick=()=>handleCategoryClick(t,r),o.appendChild(a),desktopCategoryList.appendChild(o);const n=document.createElement("button");n.textContent=t,n.className=`inline-block px-4 py-2 rounded-full text-sm font-semibold mr-2 transition-colors ${e?"category-btn-active":"bg-white text-gray-700 border"}`,n.onclick=()=>handleCategoryClick(t,r),mobileCategoryList.appendChild(n)})};
             const handleCategoryClick=(t,e)=>{activeCategory=t,searchInput.value="",renderMenu(),renderCategories();const r=document.getElementById(e);if(r){const o=-120,a=r.getBoundingClientRect().top+window.pageYOffset+o;window.scrollTo({top:a,behavior:"smooth"})}};
 
