@@ -95,6 +95,26 @@
             align-items: center;
             gap: 8px;
         }
+
+        /* ==== NOVOS ESTILOS PARA O CABEÇALHO ==== */
+        .header-banner {
+            background-size: cover;
+            background-position: center;
+            height: 160px; /* Altura da imagem de fundo */
+        }
+        .header-logo {
+            width: 80px; /* Tamanho da logo */
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            position: absolute;
+            top: 120px; /* Posição da logo, sobrepondo a banner */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        /* ==== FIM DOS NOVOS ESTILOS ==== */
+
         @media (max-width: 1024px) {
             .confirmation-message {
                 bottom: 80px; width: 90%; text-align: center; justify-content: center;
@@ -210,21 +230,27 @@
             </aside>
 
             <main class="lg:col-span-9 xl:col-span-6 pb-24">
-                <div id="mobile-info-header" class="lg:hidden mt-6 bg-white border border-gray-100 shadow-sm rounded-2xl p-4 flex gap-4 items-center">
-                    <div class="font-bold text-xl flex items-center justify-center">
-                        <i data-lucide="hamburger" class="w-16 h-16 mr-2 object-contain bg-gray-100 rounded-lg p-2" style="color: var(--laranja);"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold">Doka Burger</h1>
-                        <div id="status-loja-mobile" class="flex items-center gap-2 text-sm font-semibold mt-1"></div>
-                    </div>
-                </div>
 
-                <div id="desktop-info-header" class="hidden lg:block py-8">
-                    <h1 class="text-4xl font-bold">Cardápio Doka Burger</h1>
-                    <div id="status-loja-desktop" class="flex items-center gap-2 text-md font-semibold mt-2"></div>
+                <div id="mobile-info-header" class="lg:hidden mt-6 relative">
+                    <div class="header-banner rounded-2xl" style="background-image: url('https://engevealbani.github.io/yesfotos/foto/local-de-prazer.png');">
+                        </div>
+                    <img src="https://engevealbani.github.io/yesfotos/foto/Gemini_Generated_Image_wcx0tqwcx0tqwcx0.png" alt="Logo Doka Burger" class="header-logo">
+                    
+                    <div class="bg-white p-4 rounded-b-2xl shadow-sm border-x border-b border-gray-100 text-center">
+                        <h1 class="text-2xl font-bold mt-10">Doka Burger</h1>
+                        <div id="status-loja-mobile" class="flex items-center justify-center gap-2 text-sm font-semibold mt-1">
+                           </div>
+                    </div>
                 </div>
-                
+                <div id="desktop-info-header" class="hidden lg:block py-8 relative text-white bg-marrom p-8 rounded-2xl overflow-hidden my-8">
+                     <div class="absolute inset-0 header-banner opacity-30" style="background-image: url('https://engevealbani.github.io/yesfotos/foto/local-de-prazer.png');">
+                        </div>
+                    <div class="relative z-10">
+                        <h1 class="text-5xl font-bold">Cardápio Doka Burger</h1>
+                        <div id="status-loja-desktop" class="flex items-center gap-2 text-md font-semibold mt-3">
+                            </div>
+                    </div>
+                </div>
                 <div id="mobile-category-nav" class="lg:hidden sticky top-[80px] bg-opacity-80 backdrop-blur-md bg-white/80 z-30 py-3 -mx-4 px-4 border-b border-gray-100">
                     <div id="mobile-category-list" class="overflow-x-auto whitespace-nowrap no-scrollbar"></div>
                 </div>
@@ -838,16 +864,16 @@
 
                 carrinho.forEach((item, index) => {
                     const itemHtml = `
-                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
-                                <div class="flex-grow">
-                                    <p class="font-semibold">${item.quantidade}x ${item.nome}</p>
-                                    <p class="text-sm text-gray-600">${formatCurrency(item.preco * item.quantidade)}</p>
+                                <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                                    <div class="flex-grow">
+                                        <p class="font-semibold">${item.quantidade}x ${item.nome}</p>
+                                        <p class="text-sm text-gray-600">${formatCurrency(item.preco * item.quantidade)}</p>
+                                    </div>
+                                    <button class="remove-item-from-modal-btn text-red-500 hover:text-red-700 p-2" data-index="${index}">
+                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    </button>
                                 </div>
-                                <button class="remove-item-from-modal-btn text-red-500 hover:text-red-700 p-2" data-index="${index}">
-                                    <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                </button>
-                            </div>
-                        `;
+                            `;
                     editModalCartItems.innerHTML += itemHtml;
                 });
                 lucide.createIcons();
